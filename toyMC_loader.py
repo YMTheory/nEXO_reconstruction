@@ -52,16 +52,20 @@ class toyMC_loader():
     def load_h5file_multiChannels(self, evtNo):
         with h5.File(self.toyMC_filename, 'r') as f:
             groupname = f'event_{evtNo}'
-            group = f[groupname]
+            try:
+                group = f[groupname]
+                self.waveform_multiChannel_oneEvt = {}
             
-            self.waveform_multiChannel_oneEvt = {}
-            
-            for dsetname in group.keys():
-                dset = group[dsetname]
-                wf = []
-                for elem in dset:
-                    wf.append(elem)
-                self.waveform_multiChannel_oneEvt[dsetname] = wf
+                for dsetname in group.keys():
+                    dset = group[dsetname]
+                    wf = []
+                    for elem in dset:
+                        wf.append(elem)
+                    self.waveform_multiChannel_oneEvt[dsetname] = wf
+                return True
+            except:
+                print(f'Error when loading group {groupname}.')
+                return False
                 
     def display_event_multiChannels(self, evtNo, ):
         self.load_h5file_multiChannels(evtNo)

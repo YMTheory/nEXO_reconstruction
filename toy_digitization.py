@@ -21,6 +21,7 @@ class digitization():
         self.asic_noises = []
         self.asic_noise_psd_file = '/Users/yumiao/Documents/Works/0nbb/nEXO/offline-samples/noise_unshape.root'
 
+        self.preTime, self.preAmp = None, None
         self.cryoTime = []
         self.cryoAmp  = []
         self.outputWF = []
@@ -155,8 +156,8 @@ class digitization():
 
 
     def generate_waveform(self, Q, x, y, z):
-        preTime, preAmp = SignalCalculator.ComputeChargeWaveformOnStripWithIons(Q, x, y, z)
-        self.convolve_asic_response(preTime, preAmp)
+        self.preTime, self.preAmp = SignalCalculator.ComputeChargeWaveformOnStripWithIons(Q, x, y, z)
+        self.convolve_asic_response(self.preTime, self.preAmp)
         self.generate_noise(len(self.cryoAmp))
         self.quantization(self.cryoAmp, self.asic_noise_amp, 40000.)
         

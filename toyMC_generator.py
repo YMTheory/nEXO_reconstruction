@@ -39,7 +39,7 @@ class toyMC_generator():
         
         self.digi = digitization(SamplingFrequency=2)
     
-    def generate_bunches(self, xx, yx, xy, yy, Q0, x0, y0, z0):
+    def generate_bunches(self, xx, yx, xy, yy, Q0, x0, y0, z0, writeinfo=True):
         self.x_xstrip, self.y_xstrip, self.x_ystrip, self.y_ystrip = xx, yx, xy, yy
         
         for ievt in tqdm(range(self.total_entries)):
@@ -60,19 +60,20 @@ class toyMC_generator():
             self.wf_xstrip.append(xwf_oneEvt)
             self.wf_ystrip.append(ywf_oneEvt)
             
-        with open(self.readme_filename, 'a') as f:
-            # record data file and data info.
-            f.write(self.filename)
-            f.write('\n')
-            f.write(f'Q = {Q0}, ({x0}, {y0}, {z0})\n')
-            f.write('Simulated x-strip central positions: \n')
-            for x, y in zip(xx, yx):
-                f.write(f'({x}, {y}), ')
-            f.write('\n')
-            f.write('Simulated y-strip central positions: \n')
-            for x, y in zip(xy, yy):
-                f.write(f'({x}, {y}), ')
-            f.write('\n')
+        if writeinfo:
+            with open(self.readme_filename, 'a') as f:
+                # record data file and data info.
+                f.write(self.filename)
+                f.write('\n')
+                f.write(f'Q = {Q0}, ({x0}, {y0}, {z0})\n')
+                f.write('Simulated x-strip central positions: \n')
+                for x, y in zip(xx, yx):
+                    f.write(f'({x}, {y}), ')
+                f.write('\n')
+                f.write('Simulated y-strip central positions: \n')
+                for x, y in zip(xy, yy):
+                    f.write(f'({x}, {y}), ')
+                f.write('\n')
             
     def save_waveforms(self):
         with h5py.File(self.filename, 'w') as f:

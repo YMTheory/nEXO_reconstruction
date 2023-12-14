@@ -129,7 +129,7 @@ class pdf_generator():
         print(f'Total generated {len(self.X)} points for PDF templates.')
 
 
-    def _generate_PDFs(self, q, z):
+    def _generate_inductionPDFs(self, q, z):
         self._generate_coordinates()
         
         induction_pdfs = {}
@@ -147,3 +147,22 @@ class pdf_generator():
         with h5.File(self.filename, 'w') as f:
             for name, pdf in induction_pdfs.items():
                 f.create_dataset(name, data=pdf)
+                
+    
+    def _generate_collectionPDFs(self, q, z):
+        collection_pdfs = {}
+        side, step = 3., 0.2 # unit: mm
+        for x in tqdm(np.arange(0, side+step, step)):
+            for y in np.arange(0, side, 0.5):
+                flag = (self._is_point_onStrip((x, y)) and x!=y)
+                if flag:
+                    pdf_name = f'x{x:.1f}y{y:.1f}'
+                    self.digi.generate_waveform(q, x, y, z)
+                    pdf = self.digi.get_quantized_truthWF()
+                    
+                    collection_pdfs[pdf_name] = pdf
+                    
+        with h5.File(self.filename, 'w') as f:
+            for name, pdf in collection_pdfs.items():
+                f.create_dataset(name, data=pdf)
+                    

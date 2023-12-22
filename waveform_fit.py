@@ -9,10 +9,16 @@ import time
 import h5py
 import matplotlib.pyplot as plt
 import re
+from scipy.interpolate import griddata
 
 from iminuit import Minuit
 from iminuit.cost import LeastSquares
 from iminuit.util import describe
+
+#import jax
+#from jax import numpy as jnp
+#jax.config.update("jax_enable_x64", True)  # enable float64 precision, default is float32
+
 
 from SignalCalculator import SignalCalculator
 from toy_digitization import digitization
@@ -27,25 +33,28 @@ class fitter():
         self.digi = digitization(SamplingFrequency=SamplingFrequency)
 
         self.gridPDFs_induction = {}
-        self.gridPDF_induction_filename = './gridPDFs_induction_nonuniform_simplified_new2.h5'
+        self.gridPDF_induction_filename = '/Users/yumiao/Documents/Works/0nbb/nEXO/Reconstruction/waveform/nEXO_reconstruction/PDFs/gridPDFs_induction_nonuniform_simplified_new2.h5'
         #self.gridPDF_induction_filename = './gridPDFs_induction_nonuniform.h5'
         #self.gridPDF_induction_filename = './gridPDFs_induction_test.h5'
         self.gridPDFs_collection = {}
-        self.gridPDF_collection_filename = './gridPDFs_collection_test.h5'
+        #self.gridPDF_collection_filename = '/Users/yumiao/Documents/Works/0nbb/nEXO/Reconstruction/waveform/nEXO_reconstruction/PDFs/grid_collection_PDFs.h5'
+        self.gridPDF_collection_filename = '/Users/yumiao/Documents/Works/0nbb/nEXO/Reconstruction/waveform/nEXO_reconstruction/PDFs/gridPDFs_collection_test.h5'
         self.gridPDFs_time = None
         self.pdf_length = 0
         self.x_step = 6.
-        self.x_min = -48
-        self.x_max = 48
+        self.x_min = -44
+        self.x_max = 44
         self.y_step = 6.
-        self.y_min = -30
-        self.y_max = 30
+        self.y_min = -28
+        self.y_max = 28
         
         self.v_drift = 1.70 # um / ms
         
         # As the uniform gridPDFs performs badly, try non-uniform dividing.
         self.xbonds = np.array([-48, -44, -40, -38, -36, -34, -32, -30, -28, -26, -24, -22, -20, -19, -18, -17, -16, -15, -14, -13, -12, -11, -10.0, -9.5, -9.0, -8.5, -8.0, -7.5, -7.0, -6.5, -6.0, -5.5, -5.0, -4.5, -4.0, -3.5, -3.0, -2.5, -2.0, -1.5, -1.0, -0.5, 0.0, 0.5, 1.0, 1.5, 2.0, 2.5, 3.0, 3.5, 4.0, 4.5, 5.0, 5.5, 6.0, 6.5, 7.0, 7.5, 8.0, 8.5, 9.0, 9.5, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 22, 24, 26, 28, 30, 32, 34, 36, 38, 40, 44, 48], dtype=float)
         self.ybonds = np.array([-30, -28, -26, -24, -22, -20, -19, -18, -17, -16, -15, -14, -13, -12, -11, -10.0, -9.5, -9.0, -8.5, -8.0, -7.5, -7.0, -6.5, -6.0, -5.5, -5.0, -4.5, -4.0, -3.5, -3.0, -2.5, -2.0, -1.5, -1.0, -0.5, 0.0, 0.5, 1.0, 1.5, 2.0, 2.5, 3.0, 3.5, 4.0, 4.5, 5.0, 5.5, 6.0, 6.5, 7.0, 7.5, 8.0, 8.5, 9.0, 9.5, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 22, 24, 26, 28, 30], dtype=float)
+        self.indpdf_x = []
+        self.indpdf_y = []
 
         self.toyMC_loader = toyMC_loader()
         self.gen = pdf_generator()
@@ -192,18 +201,86 @@ class fitter():
             self.pdf_length = len(pdf)
 
         for ky, pdf in self.gridPDFs_induction.items():
+            matches = re.findall(r'\d+\.?\d*', ky)
+            self.indpdf_x.append(float(matches[0]))
+            self.indpdf_y.append(float(matches[1]))
             pdf = np.append(np.zeros(50), pdf)
             pdf = np.append(pdf, np.zeros(50))
             self.gridPDFs_induction[ky] = pdf
 
         self.gridPDFs_time = np.arange(self.pdf_length) * self.SamplingInterval
 
+        self.indpdf_x = np.array(self.indpdf_x)
+        self.indpdf_y = np.array(self.indpdf_y)
 
+
+    def PDF_interpolation_coll(self, x, y):
+        '''
+        The input point should be judged as 'on the strip' with the corresponding to function.
+        '''
+        # find the nearest pad center:
+        #print(x, y)
+        x_center = int(x / 6) *6 + 3 
+        if x_center > self.x_max:
+            print(f'Out of range {x_center} for x = {x}.')
+            return np.zeros(self.pdf_length)
+        else:
+            x_rel, y_rel = x - x_center + 3, y
+            # Do rotation in to the square area:
+            theta = -np.pi/4
+            x_rel1 = np.cos(theta) * x_rel + y_rel * np.sin(theta)
+            y_rel1 = -np.sin(theta) * x_rel + y_rel * np.cos(theta)
+            
+            sidelength = 4.2
+            if x_rel1 > sidelength:
+                x_rel1 = sidelength
+            if x_rel1 < 0:
+                x_rel1 = 0
+            if y_rel1 > sidelength:
+                y_rel1 = sidelength
+            if y_rel1 < 0:
+                y_rel1 = 0
+            
+            stepsize = 0.2
+            x_left = int(x_rel1 / 0.2) * stepsize
+            if x_left < stepsize:
+                x_left = stepsize
+            x_right = x_left + stepsize 
+            if x_right > sidelength:
+                x_right = sidelength
+            y_down = int(y_rel1 / stepsize) * stepsize
+            if y_down < stepsize:
+                y_down = stepsize
+            y_up = y_down + stepsize
+            if y_up > sidelength:
+                y_up = sidelength
+
+            #print(x_left, x_rel1, x_right, y_down, y_rel1, y_up)
+            
+            f00 = self.gridPDFs_collection[f'x{x_left:.2f}y{y_down:.2f}']
+            f10 = self.gridPDFs_collection[f'x{x_right:.2f}y{y_down:.2f}']
+            f01 = self.gridPDFs_collection[f'x{x_left:.2f}y{y_up:.2f}']
+            f11 = self.gridPDFs_collection[f'x{x_right:.2f}y{y_up:.2f}']
+            
+            wx, wy = 1, 1
+            if x_left != x_right:
+                wx = (x_right - x_rel1)/(x_right - x_left)
+            if y_down != y_up:
+                wy = (y_up - y_rel1)/(y_up - y_down)
+            
+            f = f00 * wx * wy + f01 * wx * (1-wy) + f10 * (1-wx) * wy + f11 * (1-wx) * (1-wy)  
+            
+            return f
+            
+            
+            
+    
     def PDF_interpolation(self, x, y):
         ## Using the 4-fold symmetry in PDFs, compare the absolute value directly.
-        if np.abs(x) < self.x_min or np.abs(x) > self.x_max or np.abs(y) < self.y_min or np.abs(y) > self.y_max:
+        #if np.abs(x) <= self.x_min or np.abs(x) >= self.x_max or np.abs(y) <= self.y_min or np.abs(y) >= self.y_max:
+        if x >= self.x_max or x <= self.x_min or y <= self.y_min or y >= self.y_max:
             # out the ROI
-            print('Fitting x or y parameters have run out of the ROI.')
+            #print('Fitting x or y parameters have run out of the ROI.')
             return np.zeros(self.pdf_length)
         else:
             #print(x, y)
@@ -212,55 +289,52 @@ class fitter():
             for i in range(len(self.xbonds)-1):
                 if self.xbonds[i] <= x < self.xbonds[i+1]:
                     x_left, x_right = self.xbonds[i], self.xbonds[i+1]
-            for i in range(len(self.ybonds)-1):
-                if self.ybonds[i] <= y < self.ybonds[i+1]:
-                    y_down, y_up = self.ybonds[i], self.ybonds[i+1]
 
-            if None in (x_left, x_right, y_down, y_up):
-                print(f'Error!! {x} within ({x_left}, {x_right}), {y} within ({y_down}, {y_up}).')
-
-            #print(x_left, x_right, y_down, y_up)
-            name00 = f'x{x_left}y{y_down}'
-            name01 = f'x{x_left}y{y_up}'
-            name10 = f'x{x_right}y{y_down}'
-            name11 = f'x{x_right}y{y_up}'
-
-            flag00, flag01, flag10, flag11 = False, False, False, False
-            if name00 in self.gridPDFs_induction.keys():
-                flag00 = True
-                f00 = self.gridPDFs_induction[name00]
-            if name01 in self.gridPDFs_induction.keys():
-                flag01 = True
-                f01 = self.gridPDFs_induction[name01]
-            if name10 in self.gridPDFs_induction.keys():
-                flag10 = True
-                f10 = self.gridPDFs_induction[name10]
-            if name11 in self.gridPDFs_induction.keys():
-                flag11 = True
-                f11 = self.gridPDFs_induction[name11]
+            ylist_xleft = self.indpdf_y[np.where(self.indpdf_x==x_left)]
+            ylist_xright = self.indpdf_y[np.where(self.indpdf_x==x_right)]
+            ylist_xleft.sort()
+            ylist_xright.sort()
             
-            if flag00 and flag01 and flag10 and flag11:
-                wx = (x_right - x)/(x_right - x_left)
-                wy = (y_up - y)/(y_up - y_down)
-                #print(x, x_left, x_right, wx)
-                f = f00 * wx * wy + f01 * wx * (1-wy) + f10 * (1-wx) * wy + f11 * (1-wx) * (1-wy)  
-            #return np.interp(t, self.gridPDFs_time, f)
-
+            if y < np.min(ylist_xleft) or y < np.min(ylist_xright):
+                name = f'x{x_left}y{np.min(ylist_xleft)}'
+                f = self.gridPDFs_induction[name]
+            elif y > np.max(ylist_xleft) or y>np.max(ylist_xright):
+                name = f'x{x_left}y{np.max(ylist_xleft)}'
+                f = self.gridPDFs_induction[name]
             else:
-                if flag00:
-                    f = f00
-                else:
-                    if flag01:
-                        f = f01
-                    else:
-                        if flag10:
-                            f = f10
-                        else:
-                            if flag11:
-                                f = f11
-                            else:
-                                print(f'Error! There is no boundary points for ({x}, {y})!!! CHECK-REQUIRED!!!')
-                                f = self.gridPDFs_induction['x0.0y0.0']
+                name00, name01, name10, name11 = None, None, None, None
+                y_left_down, y_left_up, y_right_down, y_rigth_up = 0, 0, 0, 0
+                for i in range(len(ylist_xleft)-1):
+                    if ylist_xleft[i] <= y <= ylist_xleft[i+1]:
+                        y_left_down = ylist_xleft[i]
+                        y_left_up = ylist_xleft[i+1]
+                        name00 = f'x{x_left}y{ylist_xleft[i]}'
+                        name01 = f'x{x_left}y{ylist_xleft[i+1]}'
+                for i in range(len(ylist_xright)-1):
+                    if ylist_xright[i] <= y <= ylist_xright[i+1]:
+                        y_right_down = ylist_xright[i]
+                        y_rigth_up = ylist_xright[i+1]
+                        name10 = f'x{x_right}y{ylist_xright[i]}'
+                        name11 = f'x{x_right}y{ylist_xright[i+1]}'
+
+
+                f00 = self.gridPDFs_induction[name00]
+                f01 = self.gridPDFs_induction[name01]
+                f10 = self.gridPDFs_induction[name10]
+                f11 = self.gridPDFs_induction[name11]
+                
+                Xs = np.array([x_left, x_left, x_right, x_right])
+                Ys = np.array([y_left_down, y_left_up, y_right_down, y_rigth_up])
+                Zs = np.array([f00, f01, f10, f11])
+                f = griddata((Xs, Ys), Zs, (x, y), method='linear')
+
+            
+                #wx = (x_right - x)/(x_right - x_left)
+                #wy = (y_up - y)/(y_up - y_down)
+                ##print(x, x_left, x_right, wx)
+                #f = f00 * wx * wy + f01 * wx * (1-wy) + f10 * (1-wx) * wy + f11 * (1-wx) * (1-wy)  
+                ##return np.interp(t, self.gridPDFs_time, f)
+
             return f
         
         
@@ -437,11 +511,13 @@ class fitter():
                     px, py = y0 - sy, x0 - sx
 
                 px, py = np.abs(px), np.abs(py)
+                #print(px, py)
                                 
                 flag = self.gen._is_point_onStrip((px, py))
                 
                 if flag:
                     f0 = self.gridPDFs_collection['coll'] * Q0
+                    #f0 = self.PDF_interpolation_coll(px, py) * Q0
                 else:   
                     f0 = self.PDF_interpolation(px, py) * Q0 
 
@@ -469,7 +545,7 @@ class fitter():
         for i in range(len(least_squres)-1):
             least_squres_total += least_squres[i+1]
             
-        print(f'{describe(least_squres_total)=}.')
+        #print(f'{describe(least_squres_total)=}.')
         
         ############ Coordinates quick checking #############
         ii = 0
@@ -479,11 +555,11 @@ class fitter():
             if ystrip:
                 ty = 'y'
                 dx, dy = y0 - sy, x0 - sx
-            print(f'Local coordinates for the charge on strip{ii} ({ty}) is ({dx}, {dy}).')
+            #print(f'Local coordinates for the charge on strip{ii} ({ty}) is ({dx}, {dy}).')
             ii += 1
             
         m = Minuit(least_squres_total, t0=t0, x0=x0, y0=y0, z0=z0, Q0=Q0)
-        m.print_level = 1
+        m.print_level = 0
         
         #xmin, xmax = x0 * 0.95, x0*1.05
         #ymin, ymax = y0 * 0.5, y0*1.50
@@ -493,14 +569,14 @@ class fitter():
         #    ymin, ymax = -1, 1
         
         dx = 15.0 # mm
-        dy = 4.0 # mm
+        dy = 15.0 # mm
         xmin, xmax = x0 - dx, x0 + dx
         ymin, ymax = y0 - dy, y0 + dy
          
             
         #print('x-range: ', xmin, xmax)
         #print('y-range: ', ymin, ymax) 
-        m.limits = [(-500, 500), (-42, 42), (ymin, ymax), (0.8*z0, 1.2*z0), (0.5*Q0, 1.5*Q0)]
+        m.limits = [(-500, 500), (xmin, xmax), (ymin, ymax), (0.8*z0, 1.2*z0), (0.1*Q0, 2.0*Q0)]
         m.fixed['t0'] = True
         m.fixed['x0'] = False
         m.fixed['y0'] = False
@@ -510,6 +586,225 @@ class fitter():
         
         return m
         
+    
+    def fitting_quality_check(self, m):
+        return m.valid
+     
+    def multiCluster_waveform(self, t, t0s, x0s, y0s, z0s, q0s, sx, sy, ystrip):
+        amp = 0
+        for x0, y0, z0, q0, t0 in zip(x0s, y0s, z0s, q0s, t0s):
+            if ystrip:
+                px, py = x0 - sx, y0 - sy
+            else:
+                px, py = y0 - sy, x0 - sx
+
+            px, py = np.abs(px), np.abs(py)
+            #print(px, py)
+
+            flag = self.gen._is_point_onStrip((px, py))
         
-        
+            if flag:
+                f0 = self.gridPDFs_collection['coll'] * q0
+                #f0 = self.PDF_interpolation_coll(px, py) * Q0
+            else:   
+                f0 = self.PDF_interpolation(px, py) * q0 
+
+            dt_drift = z0 / self.v_drift - 100. / self.v_drift # 100 from PDF generator.
+            dt = dt_drift + t0 - 25
             
+            amp += np.interp(t-dt, self.gridPDFs_time, f0) 
+        
+        return amp
+            
+            
+    def multiCluster_fitting(self, time_arr, wf_arr, x0s, y0s, params, sx_arr, sy_arr, ystrip_arr, fixedNo=[]):
+        '''
+        1. time_arr, wf_arr: the time and waveforms for all channels (length is the channel number).
+        2. params: initial values for the cluster info, organized as [xi, yi, zi, qi, ti, ...], the length is 5 times the cluster number.
+        3. sx_arr, sy_arr, ystrip_arr: x, y coordinates of all channels, and also the flag to indicate if it is a y-strip (x-direction aligned).
+        '''
+
+        def create_models(sx, sy, ystrip):
+            def one_model(t, *params):
+                amp = np.zeros(len(t))
+                n_param = 2
+                n_cluster = int(len(params)/n_param)
+                for i_cluster in range(n_cluster):
+                    #x0, y0, z0, Q0 = params[0+i_cluster*n_param], params[1+i_cluster*n_param], params[2+i_cluster*n_param], params[3+i_cluster*n_param]
+                    z0, Q0 = params[0+i_cluster*n_param], params[1+i_cluster*n_param],
+                    x0, y0 = x0s[i_cluster], y0s[i_cluster]
+                    if ystrip:
+                        px, py = x0 - sx, y0 - sy
+                    else:
+                        px, py = y0 - sy, x0 - sx
+
+                    px, py = np.abs(px), np.abs(py)
+                    #print(px, py)
+
+                    flag = self.gen._is_point_onStrip((px, py))
+                
+                    if flag:
+                        f0 = self.gridPDFs_collection['coll'] * Q0
+                        #f0 = self.PDF_interpolation_coll(px, py) * Q0
+                    else:   
+                        f0 = self.PDF_interpolation(px, py) * Q0 
+
+                    dt_drift = z0 / self.v_drift - 100. / self.v_drift # 100 from PDF generator.
+                    dt = dt_drift - 25
+
+                    amp += np.interp(t-dt, self.gridPDFs_time, f0) 
+                return amp
+                
+            return one_model
+
+        models_list = []
+        for i in range(len(sx_arr)):
+            models_list.append(create_models(sx_arr[i], sy_arr[i], ystrip_arr[i]))
+          
+        def chi2_manual(*params):
+            chi2 = 0
+            wferr = 100 / int(40000./4096.)
+            for i in range(len(sx_arr)):
+                model = models_list[i]
+                chi2 += np.sum( (wf_arr[i] - model(time_arr[i], *params) )**2 / wferr**2 )
+            return chi2
+     
+          
+        '''  
+        least_squres = []            
+        for i in range(len(sx_arr)):
+            t, wf = time_arr[i], wf_arr[i]
+            model = models_list[i]
+            # loop all channels and combine fitting
+            wferr = np.ones(len(wf)) * (100 / int(40000./4096.))
+            #ls = LeastSquares(t, wf, wferr, model, loss='soft_l1')
+            ls = LeastSquares(t, wf, wferr, model)
+            least_squres.append(ls)
+        
+        least_squres_total = least_squres[0]
+        for i in range(len(least_squres)-1):
+            least_squres_total += least_squres[i+1]
+            
+        #print(f'{describe(least_squres_total)=}.')
+        '''
+        
+        ############ Coordinates quick checking #############
+        
+        #m = Minuit(least_squres_total, *params)
+        m = Minuit(chi2_manual, *params, )#grad=jax.grad(chi2_manual))
+        n_param = 2
+        n_cluster = int(len(params)/n_param)
+        print(f'During minuit construction, there are {n_cluster} clusters.')
+        for i_cluster in range(n_cluster):
+            #x0 = params[0+i_cluster*n_param]
+            #y0 = params[1+i_cluster*n_param]
+            z0 = params[0+i_cluster*n_param]
+            #m.limits[i_cluster*n_param+0] = (x0-3, x0+3)
+            #m.limits[i_cluster*n_param+1] = (y0-3, y0+3)
+            m.limits[i_cluster*n_param+0] = (z0-20, z0+20)
+            m.limits[i_cluster*n_param+1] = (0, 2.0)
+
+        for ipar in fixedNo:
+            m.fixed[ipar] = True
+
+        #print(m.params)
+
+        m.print_level = 1
+        m.strategy = 0
+            
+        m.migrad(ncall=50000, iterate=10)
+        
+        return m
+        
+
+        
+        
+        
+
+    def multiCluster_manualtuning(self, time_arr, wf_arr, x0s, y0s, params, sx_arr, sy_arr, ystrip_arr, q_channel, noisetag):
+        '''
+        1. time_arr, wf_arr: the time and waveforms for all channels (length is the channel number).
+        2. params: initial values for the cluster info, organized as [xi, yi, zi, qi, ti, ...], the length is 5 times the cluster number.
+        3. sx_arr, sy_arr, ystrip_arr: x, y coordinates of all channels, and also the flag to indicate if it is a y-strip (x-direction aligned).
+        '''
+
+        def create_models(sx, sy, ystrip):
+            def one_model(t, *params):
+                amp = 0
+                n_param = 2
+                n_cluster = int(len(params)/n_param)
+                for i_cluster in range(n_cluster):
+                #for x0, y0, z0, Q0, t0, in zip(x0s, y0s, z0s, Q0s, t0s):
+                    #x0, y0, z0, Q0, = params[0+i_cluster*n_param], params[1+i_cluster*n_param], params[2+i_cluster*n_param], params[3+i_cluster*n_param], 
+                    z0, Q0 = params[0+i_cluster*2], params[1+i_cluster*2]
+                    x0, y0, t0 = x0s[i_cluster], y0s[i_cluster], 0
+                    if ystrip:
+                        px, py = x0 - sx, y0 - sy
+                    else:
+                        px, py = y0 - sy, x0 - sx
+
+                    px, py = np.abs(px), np.abs(py)
+                    #print(px, py)
+
+                    flag = self.gen._is_point_onStrip((px, py))
+                
+                    if flag:
+                        f0 = self.gridPDFs_collection['coll'] * Q0
+                        #f0 = self.PDF_interpolation_coll(px, py) * Q0
+                    else:   
+                        f0 = self.PDF_interpolation(px, py) * Q0 
+
+                    dt_drift = z0 / self.v_drift - 100. / self.v_drift # 100 from PDF generator.
+                    dt = dt_drift - 25
+                    
+                    amp += np.interp(t-dt, self.gridPDFs_time, f0) 
+                
+                return amp
+                
+            return one_model
+            
+        models_list = []
+        for i in range(len(sx_arr)):
+            models_list.append(create_models(sx_arr[i], sy_arr[i], ystrip_arr[i]))
+            
+        # The scanning parameters are the charges at each sites.
+
+        ncols = 3
+        nrows = int((len(time_arr)-1)/ncols) + 1
+        
+        _, ax = plt.subplots(nrows, ncols, figsize=(14, 4*nrows))    
+        for i, (tt, ww, x, y, f, q, tag) in enumerate(zip(time_arr, wf_arr, sx_arr, sy_arr, ystrip_arr, q_channel, noisetag)):
+            if nrows == 1:
+                col = int(i%3)
+                ax[col].plot(tt, ww)
+                ax[col].set_xlabel('drift time [us]', fontsize=12)
+                ax[col].set_ylabel('adc', fontsize=12)
+                ax[col].tick_params(axis='both', labelsize=11)
+            
+                wf_tune = models_list[i](tt, *params)
+                ax[col].plot(tt, wf_tune)
+            
+                strip_type = 'xstrip'
+                if f:
+                    strip_type = 'ystrip'
+                ax[col].set_title(f'{strip_type}: X{x}Y{y}, q={q:.2f}, noiseTag={tag}', fontsize=13)
+                
+            else:   
+                row = int(i/3)
+                col = int(i%3)
+                ax[row, col].plot(tt, ww)
+                ax[row, col].set_xlabel('drift time [us]', fontsize=12)
+                ax[row, col].set_ylabel('adc', fontsize=12)
+                ax[row, col].tick_params(axis='both', labelsize=11)
+            
+                wf_tune = models_list[i](tt, *params)
+                ax[row, col].plot(tt, wf_tune)
+            
+                strip_type = 'xstrip'
+                if f:
+                    strip_type = 'ystrip'
+                ax[row, col].set_title(f'{strip_type}: X{x}Y{y}, q={q:.2f}, noiseTag={tag}', fontsize=13)
+            
+        
+        plt.tight_layout()
+        plt.show()

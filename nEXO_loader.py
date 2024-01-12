@@ -69,7 +69,7 @@ class loader():
             return one_event
         
     
-    def _plot_topo2d(self, evtid, noiseFlag=False, numPads=16, padSize=6.0, truthPos=False, fitPos=[]):
+    def _plot_topo2d(self, evtid, noiseFlag=False, numPads=16, padSize=6.0, truthDepPos=False, fitPos=[], truthPCD=False, PCDs=[]):
         x_clr = 'blue'
         y_clr = 'orange'
         one_event = self._get_one_event(evtid)
@@ -124,11 +124,15 @@ class loader():
             
         #plt.xlim(txmin-96, txmax+96)
         #plt.ylim(tymin-96, tymax+96)
+        
+        if truthPCD:
+            plt.scatter(PCDs[0], PCDs[1], s=PCDs[2], color='green', alpha=0.3)
 
-        if truthPos:
+        if truthDepPos:
             print(event_x[1], event_y[1], event_z[1])
             #plt.scatter(event_x, event_y, s=np.abs(event_z)/10., color='red', fc='none', ec='red', lw=0.5)
-            plt.scatter(event_x, event_y, s=event_E*1000, color='red', fc='none', ec='red', lw=0.5)
+            plt.scatter(event_x, event_y, s=event_E*500, color='red', fc='none', ec='red', lw=0.5)
+
                 
         
         if len(fitPos) > 0:

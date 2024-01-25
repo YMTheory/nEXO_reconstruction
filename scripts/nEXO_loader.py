@@ -26,6 +26,9 @@ class loader():
         self.dx             = 0.
         self.dy             = 0.
 
+        # cut the time window for fitting:
+        self.fit_t1         = -60
+        self.fit_t2         = -10
         
     def _load_event(self):
         with up.open(self.filename) as f:
@@ -41,7 +44,6 @@ class loader():
             self.fNoiseTag      = tree['ElecEvent/fElecChannels/fElecChannels.fChannelNoiseTag'].array(entry_start=self.start_evt, entry_stop=self.start_evt+self.load_nentries)
             
             tree = f['Event/Sim/SimEvent']
-            print(tree.keys())
             self.fEventXpos     = tree['SimEvent/fXpos'].array(entry_start=self.start_evt, entry_stop=self.start_evt+self.load_nentries)
             self.fEventYpos     = tree['SimEvent/fYpos'].array(entry_start=self.start_evt, entry_stop=self.start_evt+self.load_nentries)
             self.fEventZpos     = tree['SimEvent/fZpos'].array(entry_start=self.start_evt, entry_stop=self.start_evt+self.load_nentries)
@@ -191,7 +193,7 @@ class loader():
         wfs = np.array(wfs)
         
         
-        return times, wfs, sxs, sys, ystrips, qs, tags
+        return times[self.fit_t1:self.fit_t2], wfs[self.fit_t1:self.fit_t2], sxs, sys, ystrips, qs, tags
             
             
     def scanning_points(self, sxs, sys, ystrips, padSize=6):

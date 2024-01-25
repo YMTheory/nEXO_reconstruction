@@ -50,7 +50,8 @@ class fitter():
         self.y_min = -28
         self.y_max = 28
         
-        self.v_drift = 1.70 # um / ms
+        self.v_drift = 1.70 # mm / us
+        self.lifetime = 10.e3 # us, constant
         
         # As the uniform gridPDFs performs badly, try non-uniform dividing.
         self.xbonds = np.array([-48, -44, -40, -38, -36, -34, -32, -30, -28, -26, -24, -22, -20, -19, -18, -17, -16, -15, -14, -13, -12, -11, -10.0, -9.5, -9.0, -8.5, -8.0, -7.5, -7.0, -6.5, -6.0, -5.5, -5.0, -4.5, -4.0, -3.5, -3.0, -2.5, -2.0, -1.5, -1.0, -0.5, 0.0, 0.5, 1.0, 1.5, 2.0, 2.5, 3.0, 3.5, 4.0, 4.5, 5.0, 5.5, 6.0, 6.5, 7.0, 7.5, 8.0, 8.5, 9.0, 9.5, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 22, 24, 26, 28, 30, 32, 34, 36, 38, 40, 44, 48], dtype=float)
@@ -58,6 +59,9 @@ class fitter():
         self.indpdf_x = []
         self.indpdf_y = []
 
+        self.fit_t1 = -70
+        self.fit_t2 = -20
+      
         self.toyMC_loader = toyMC_loader()
         self.gen = pdf_generator()
 
@@ -183,15 +187,25 @@ class fitter():
 
     def load_diffusion_PDFs(self):
         for x in range(0, 54, 1):
-            for y in range(0, 30, 1):
-                filename = f'/Users/yumiao/Documents/Works/0nbb/nEXO/Reconstruction/waveform/nEXO_reconstruction/PDFs/diffusionPDFs_YstripatX0.0Y0.0_chargeX{x:.1f}Y{y:.1f}Z619.63Q100000.0.npy' 
+            for y in range(0, 31, 1):
+                # These lines are temporary as some PDFs have not been transferred from IHEP cluster successfully:
+                if x <= 10:
+                    filename = f'/Users/yumiao/Documents/Works/0nbb/nEXO/Reconstruction/waveform/nEXO_reconstruction/PDFs/diffusionPDFs_YstripatX0.0Y0.0_chargeX{x+12:.1f}Y{y:.1f}Z619.63Q100000.0.npy' 
+                ###########################
+                else:
+                    filename = f'/Users/yumiao/Documents/Works/0nbb/nEXO/Reconstruction/waveform/nEXO_reconstruction/PDFs/diffusionPDFs_YstripatX0.0Y0.0_chargeX{x:.1f}Y{y:.1f}Z619.63Q100000.0.npy' 
                 if not os.path.exists(filename):
                     print(f'Error: {filename} does not exists!' )
                     continue
                 else:
                     arr = np.load(filename)
                     self.gridPDFs_time = arr[0]
-                    self.gridPDFs_diffusion[f'X{x}Y{y}'] = arr[1]
+                    
+                    # hard-coded currently, modification required later:
+                    drift_time = 619.63 / self.v_drift # us
+                    att = np.exp(-drift_time/self.lifetime)
+                    
+                    self.gridPDFs_diffusion[f'X{x}Y{y}'] = arr[1] * att
         self.pdf_length = len(self.gridPDFs_time)
         print('The diffusion PDFs loaded successfully!')
 
@@ -290,10 +304,11 @@ class fitter():
             return f
             
     def diffusion_PDF_interpolation(self, x, y):
-        xmin_tmp, xmax_tmp, ymin_tmp, ymax_tmp = 30, 53, 0, 17
-        if x >= xmax_tmp or x < xmin_tmp or y > ymax_tmp or y < ymin_tmp:
+        xmin_tmp, xmax_tmp, ymin_tmp, ymax_tmp = -53, 53, -30, 30
+        if x > xmax_tmp or x < xmin_tmp or y > ymax_tmp or y < ymin_tmp:
             #print(f'Charge position ({x}, {y}) is out of the pre-generated PDF range !!')
             return np.zeros(self.pdf_length)
+            #return np.abs(self.fit_t1-self.fit_t2)
         
         else:
             #print(f'Charge position ({x}, {y}) is within of the pre-generated PDF range !!')
@@ -995,7 +1010,7 @@ class fitter():
                 ax[col].set_xlabel('drift time [us]', fontsize=12)
                 ax[col].set_ylabel('adc', fontsize=12)
                 ax[col].tick_params(axis='both', labelsize=11)
-                ax[col].set_xlim(tt[-100], tt[-20])
+                #ax[col].set_xlim(tt[-100], tt[-20])
             
                 wf_tune = models_list[i](tt, *params)
                 ax[col].plot(tt, wf_tune)
@@ -1012,7 +1027,7 @@ class fitter():
                 ax[row, col].set_xlabel('drift time [us]', fontsize=12)
                 ax[row, col].set_ylabel('adc', fontsize=12)
                 ax[row, col].tick_params(axis='both', labelsize=11)
-                ax[row, col].set_xlim(tt[-100], tt[-20])
+                #ax[row, col].set_xlim(tt[-100], tt[-20])
             
                 wf_tune = models_list[i](tt, *params)
                 ax[row, col].plot(tt, wf_tune)

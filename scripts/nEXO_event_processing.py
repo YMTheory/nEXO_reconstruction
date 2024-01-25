@@ -36,6 +36,7 @@ class event_builder():
         self.strip_y_coll = None
         self.charge_coll = None
         self.ystrip_flag_coll = None
+        self.charge_rec_coll = None
         
         self.time_all = None
         self.wf_all = None
@@ -43,6 +44,10 @@ class event_builder():
         self.strip_y_all = None
         self.charge_all = None
         self.ystrip_flag_all = None
+        self.charge_rec_all = None
+        
+        self.fit_t1     = -70
+        self.fit_t2     = -20
 
     def set_filename(self, filename):
         self.loader.filename = filename
@@ -133,8 +138,8 @@ class event_builder():
         strip_y_coll_selected = strip_y_coll_selected - self.dy
         
         self.x_cross, self.y_cross = self.find_intersections(strip_x_coll_selected, strip_y_coll_selected, ystrip_flag_coll_selected)
-        print(f'There are {len(strip_x_coll_selected)} collection strips.')
-        print(f'Total intersections of x and y collection strips is {len(self.x_cross)}.')
+        #print(f'There are {len(strip_x_coll_selected)} collection strips.')
+        #print(f'Total intersections of x and y collection strips is {len(self.x_cross)}.')
 
         self.time_coll, self.wf_coll, self.strip_x_coll, self.strip_y_coll, self.ystrip_flag_coll, self.charge_coll, = [], [], [], [], [], []
         self.time_all,  self.wf_all,  self.strip_x_all,  self.strip_y_all,  self.ystrip_flag_all,  self.charge_all,  = [], [], [], [], [], []
@@ -154,6 +159,14 @@ class event_builder():
                 self.ystrip_flag_coll.append(False)
             else:
                 self.ystrip_flag_coll.append(True)
+        self.time_coll          = np.array(self.time_coll)
+        self.wf_coll            = np.array(self.wf_coll)
+        self.time_coll          = self.time_coll[:, self.fit_t1:self.fit_t2]
+        self.wf_coll            = self.wf_coll[:, self.fit_t1:self.fit_t2]
+        self.strip_x_coll       = np.array(self.strip_x_coll)
+        self.strip_y_coll       = np.array(self.strip_y_coll)
+        self.charge_coll        = np.array(self.charge_coll)
+        self.ystrip_flag_coll   = np.array(self.ystrip_flag_coll)
             
         for q, wf, x, y, lid in zip(self.mc_event['q'][self.selected_all_id], \
                                     self.mc_event['wf'][self.selected_all_id], \
@@ -171,6 +184,14 @@ class event_builder():
             else:
                 self.ystrip_flag_all.append(True)
 
+        self.time_all          = np.array(self.time_all)
+        self.wf_all            = np.array(self.wf_all)
+        self.time_all          = self.time_all[:, self.fit_t1:self.fit_t2]
+        self.wf_all            = self.wf_all[:, self.fit_t1:self.fit_t2]
+        self.strip_x_all       = np.array(self.strip_x_all)
+        self.strip_y_all       = np.array(self.strip_y_all)
+        self.charge_all        = np.array(self.charge_all)
+        self.ystrip_flag_all   = np.array(self.ystrip_flag_all)
 
 
         
@@ -228,8 +249,8 @@ class event_builder():
             
             num = n_clusters_
             
-            print("Estimated number of clusters: %d" % n_clusters_)
-            print("Estimated number of noise points: %d" % n_noise_)
+            #print("Estimated number of clusters: %d" % n_clusters_)
+            #print("Estimated number of noise points: %d" % n_noise_)
         
         elif method == 'OPTICS':
             clust = OPTICS(max_eps=1.0)
@@ -265,14 +286,29 @@ class event_builder():
         
         if draw:
             _, ax = plt.subplots(figsize=(6, 5))
+            colors = ['blue', 'orange', 'green', 'red', 'chocolate', 'darkpink']
             for i in range(num):
-                ax.scatter(np.array(points_x[i]), np.array(points_y[i]), s=np.array(points_E[i])*200, label=f'cluster {i}') 
+                ax.scatter(np.array(points_x[i]), np.array(points_y[i]), s=np.array(points_E[i])*5000, fc='none', ec=colors[i], label=f'cluster {i}') 
             ax.set_xlabel('x [mm]', fontsize=13)
             ax.set_ylabel('y [mm]', fontsize=13)
             ax.tick_params(axis='both', labelsize=12)
+            ax.legend(prop={'size':12})
             plt.tight_layout()
         
         return cluster_x-self.dx, cluster_y-self.dy, cluster_E
+
+
+    def charge_reconstrucion(self, wf):
+        charge_wf = np.cumsum(wf)
+        return np.mean(charge_wf[-10::]), charge_wf
+        
+
+
+    def simple_reconstruction(self):
+        pass
+        
+
+
 
         
     def _plot_channels2D(self, fitx=[], fity=[], fitq=[], truthDep=False):

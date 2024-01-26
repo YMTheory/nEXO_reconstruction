@@ -96,10 +96,20 @@ def get_noise(noise_count):
   del file # Deleting the file after we save our traces to keep memory down
   return noise  
 
+def get_noise_new(noise_count):
+  file = up.open("/Users/yumiao/Documents/Works/0nbb/nEXO/offline-samples/noise_lib_1_2_us_100e.root")
+  tree = file['noiselib']
+  noise_vec_load = tree.arrays(entry_start=0, entry_stop=noise_count, library='np')
+  noise = noise_vec_load['noise_int']
+  noise = np.vstack(noise)
+  return noise
+  
+
 
 def add_noise(truth, scale=1):
   length = truth.size
-  full_noise = get_noise(10000) # Choosing high noise count to ensure randomness
+  full_noise = get_noise_new(10000) # Choosing high noise count to ensure randomness
+  #full_noise = get_noise(10000) # Choosing high noise count to ensure randomness
   flat_noise = np.ndarray.flatten(full_noise)
   start_point = np.random.randint(0,10000-length)
   pre_noise = flat_noise[start_point:start_point+length]

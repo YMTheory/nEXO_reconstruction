@@ -49,6 +49,7 @@ class fitter():
         self.y_step = 6.
         self.y_min = -28
         self.y_max = 28
+        self.load_PDF_flag = False
         
         self.v_drift = 1.70 # mm / us
         self.lifetime = 10.e3 # us, constant
@@ -59,7 +60,7 @@ class fitter():
         self.indpdf_x = []
         self.indpdf_y = []
 
-        self.fit_t1 = -70
+        self.fit_t1 = -300
         self.fit_t2 = -20
       
         self.toyMC_loader = toyMC_loader()
@@ -205,8 +206,9 @@ class fitter():
                     drift_time = 619.63 / self.v_drift # us
                     att = np.exp(-drift_time/self.lifetime)
                     
-                    self.gridPDFs_diffusion[f'X{x}Y{y}'] = arr[1] * att
+                    self.gridPDFs_diffusion[f'X{x}Y{y}'] = arr[1] #* att
         self.pdf_length = len(self.gridPDFs_time)
+        self.load_PDF_flag = True
         print('The diffusion PDFs loaded successfully!')
 
 
@@ -304,11 +306,15 @@ class fitter():
             return f
             
     def diffusion_PDF_interpolation(self, x, y):
+        if not self.load_PDF_flag:
+            self.load_diffusion_PDFs()
         xmin_tmp, xmax_tmp, ymin_tmp, ymax_tmp = -53, 53, -30, 30
         if x > xmax_tmp or x < xmin_tmp or y > ymax_tmp or y < ymin_tmp:
             #print(f'Charge position ({x}, {y}) is out of the pre-generated PDF range !!')
             return np.zeros(self.pdf_length)
             #return np.abs(self.fit_t1-self.fit_t2)
+        elif np.isnan(x) or np.isnan(y):
+            return np.zeros(self.pdf_length)
         
         else:
             #print(f'Charge position ({x}, {y}) is within of the pre-generated PDF range !!')
@@ -782,6 +788,7 @@ class fitter():
         
         
         
+        
 
     def multiCluster_manualtuning(self, time_arr, wf_arr, x0s, y0s, params, sx_arr, sy_arr, ystrip_arr, q_channel, noisetag):
         '''
@@ -961,13 +968,12 @@ class fitter():
         return m
 
         
-    def multiChannel_variedCluster_plotting(self, time_arr, wf_arr, params, sx_arr, sy_arr, ystrip_arr, charge_arr):
+    def multiChannel_variedCluster_plotting(self, time_arr, wf_arr, params_arr, config_arr, sx_arr, sy_arr, ystrip_arr, charge_arr, filtered_cha=[]):
         '''
         1. time_arr, wf_arr: the time and waveforms for all channels (length is the channel number).
         2. params: initial values for the cluster info, organized as [xi, yi, zi, qi, ti, ...], the length is 5 times the cluster number.
         3. sx_arr, sy_arr, ystrip_arr: x, y coordinates of all channels, and also the flag to indicate if it is a y-strip (x-direction aligned).
         '''
-
         def create_models(sx, sy, ystrip):
             def one_model(t, *params):
                 amp = np.zeros(len(t))
@@ -983,6 +989,7 @@ class fitter():
 
                     px, py = np.abs(px), np.abs(py)
 
+                    #f0 = self.PDF_interpolation(px, py) * Q0
                     f0 = self.diffusion_PDF_interpolation(px, py) * Q0
                     dt_drift = z0 / self.v_drift - 100. / self.v_drift # 100 from PDF generator.
                     dt = dt_drift - 25
@@ -990,30 +997,31 @@ class fitter():
                     #amp += np.interp(t-dt, self.gridPDFs_time, f0) 
                     amp += np.interp(t+z0, self.gridPDFs_time, f0)
                 return amp
-                
+
             return one_model
 
         models_list = []
         for i in range(len(sx_arr)):
             models_list.append(create_models(sx_arr[i], sy_arr[i], ystrip_arr[i]))
-          
         # The scanning parameters are the charges at each sites.
 
-        ncols = 3
+        ncols = 4
         nrows = int((len(time_arr)-1)/ncols) + 1
         
-        fig, ax = plt.subplots(nrows, ncols, figsize=(14, 4*nrows))    
+        fig, ax = plt.subplots(nrows, ncols, figsize=(18, 4*nrows))    
         for i, (tt, ww, x, y, f, q) in enumerate(zip(time_arr, wf_arr, sx_arr, sy_arr, ystrip_arr, charge_arr)):
             if nrows == 1:
                 col = int(i%3)
-                ax[col].plot(tt, ww)
+                ax[col].plot(tt, ww, '--o', ms=5)
                 ax[col].set_xlabel('drift time [us]', fontsize=12)
                 ax[col].set_ylabel('adc', fontsize=12)
                 ax[col].tick_params(axis='both', labelsize=11)
                 #ax[col].set_xlim(tt[-100], tt[-20])
             
-                wf_tune = models_list[i](tt, *params)
-                ax[col].plot(tt, wf_tune)
+                
+                for params in params_arr:
+                    wf_tune = models_list[i](tt, *params)
+                    ax[col].plot(tt, wf_tune, ':', alpha=0.6)
             
                 strip_type = 'xstrip'
                 if f:
@@ -1021,22 +1029,25 @@ class fitter():
                 ax[col].set_title(f'{strip_type}: X{x}Y{y}, q={q:.2f}', fontsize=13)
                 
             else:   
-                row = int(i/3)
-                col = int(i%3)
-                ax[row, col].plot(tt, ww)
+                row = int(i/ncols)
+                col = int(i%ncols)
+                ax[row, col].plot(tt, ww, '--o', ms=5, label='data')
                 ax[row, col].set_xlabel('drift time [us]', fontsize=12)
                 ax[row, col].set_ylabel('adc', fontsize=12)
                 ax[row, col].tick_params(axis='both', labelsize=11)
                 #ax[row, col].set_xlim(tt[-100], tt[-20])
             
-                wf_tune = models_list[i](tt, *params)
-                ax[row, col].plot(tt, wf_tune)
+                for config, params in zip(config_arr,params_arr):
+                    wf_tune = models_list[i](tt, *params)
+                    ax[row, col].plot(tt, wf_tune, ':', alpha=0.6, label=f'{config}')
             
                 strip_type = 'xstrip'
                 if f:
                     strip_type = 'ystrip'
                 ax[row, col].set_title(f'{strip_type}: X{x}Y{y}, q={q:.2f}', fontsize=13)
             
+                if row ==0 and col == 0:
+                    ax[row, col].legend(prop={"size":12})
         
         plt.tight_layout()
         plt.show()

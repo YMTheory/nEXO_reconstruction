@@ -85,7 +85,7 @@ class digitization():
             self.cryoTime.append(overSampleTime[i*25])
             self.cryoAmp.append(CRYOAmp_50MHz[i*25]*54.3)
 
-            # In offline codes, there is a factor 54.3 timed by the amplitude, while I skip it. 
+            # In offline codes, there is a factor 54.3 timed by the amplitude.
             # Comments there is: 'we actually need to convert noise waveform to ADC, put here before we changed noise lib.'
             # It means the final noise lib should be in unit ADC, while now it still like in e-/us (ENC).
             # Thus, we should keep the signal waveform also in the unit e-/us.

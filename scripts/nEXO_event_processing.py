@@ -4,6 +4,7 @@
 import numpy as np
 import uproot as up
 import matplotlib.pyplot as plt
+import pandas as pd
 
 from scripts.nEXO_loader import loader
 
@@ -23,6 +24,7 @@ class event_builder():
         self.dx = 0.
         self.dy = 0.
         
+        # channel level info:
         self.selected_coll_id = None
         self.selected_other_id = None
         self.selected_all_id = None
@@ -46,8 +48,14 @@ class event_builder():
         self.ystrip_flag_all = None
         self.charge_rec_all = None
         
-        self.fit_t1     = -70
+        self.fit_t1     = -90
         self.fit_t2     = -20
+        
+        # event level info:
+        self.event_q_rec = 0.
+        self.event_q_true = 0.
+
+        self.amp_thre = 0.
 
     def set_filename(self, filename):
         self.loader.filename = filename
@@ -55,11 +63,12 @@ class event_builder():
     def get_mc_event(self, evtid):
         self.loader._load_event()
         self.mc_event = self.loader._get_one_event(evtid)
+    
 
-    def channel_selection(self, thre=40):
+    def channel_selection(self):
         # Some induction channel has very small amplitude which should not be fitted at all..
         # The thre is calculated as ... (require re-calculation later).
-
+        thre = self.amp_thre
         Ncha = len(self.mc_event['wf'])
         self.selected_coll_id, self.selected_other_id, self.selected_all_id = [], [], []
         for i in range(Ncha):
@@ -79,44 +88,59 @@ class event_builder():
             self.selected_all_id.append(num)
               
               
-    def find_intersections(self, x_strip, y_strip, ystrip_flag):
-        x_xstrip, y_xstrip, x_ystrip, y_ystrip = [], [], [], []
-        for x, y, flag in zip(x_strip, y_strip, ystrip_flag) :
+              
+    def find_intersections(self, x_strip, y_strip, charge, ystrip_flag):
+        '''
+        Task: given all changes with charges collected, both x-strips and y-strips, find the intersections.
+        Input: x-coor, y-coor, charge and if_the_strip_is_y_strip.
+        Output: 
+        '''
+        x_xstrip, y_xstrip, q_xstrip, x_ystrip, y_ystrip, q_ystrip = [], [], [], [], [], []
+        for x, y, q, flag in zip(x_strip, y_strip, charge, ystrip_flag) :
             if flag:         
                 x_ystrip.append(x)
                 y_ystrip.append(y)
+                q_ystrip.append(q)
             else:
                 x_xstrip.append(x)
                 y_xstrip.append(y)
+                q_xstrip.append(q)
 
-        print(f'Total {len(x_xstrip)} x strips and {len(x_ystrip)} y strips.')
+        #print(f'Total {len(x_xstrip)} x strips and {len(x_ystrip)} y strips.')
         x_cross, y_cross = [], []
         x_cross_all, y_cross_all = [], []
+        cross_xstrip_charge_all, cross_ystrip_charge_all = [], []
+        cross_xstrip_charge, cross_ystrip_charge = [], []
         strip_length = 96
-        for x1, y1 in zip(x_xstrip, y_xstrip):
-            for x2, y2 in zip(x_ystrip, y_ystrip):
+        for x1, y1, q1 in zip(x_xstrip, y_xstrip , q_xstrip):
+            for x2, y2, q2 in zip(x_ystrip, y_ystrip, q_ystrip):
                 if np.abs(x1-x2) > strip_length/2. or np.abs(y1-y2)>strip_length/2.:
                     continue
                 else:
                     x_cross_all.append(x1)
                     y_cross_all.append(y2)
-        seen = set()
-        duplicates = set()
-        for xi, yi in zip(x_cross_all, y_cross_all):
-            pair = (xi, yi)
-            if pair in seen:
-                duplicates.add(pair)
+                    cross_xstrip_charge_all.append(q1)
+                    cross_ystrip_charge_all.append(q2)
+              
+              
+        xcharge_dict, ycharge_dict = {}, {}
+        for xi, yi, qxi, qyi in zip(x_cross_all, y_cross_all, cross_xstrip_charge_all, cross_ystrip_charge_all):
+            if (xi, yi) in xcharge_dict:
+                xcharge_dict[(xi, yi)] += qxi
             else:
-                seen.add(pair)
-        for coor in seen:
-            x_cross.append(coor[0])
-            y_cross.append(coor[1])
-        x_cross = np.array(x_cross)
-        y_cross = np.array(y_cross)
-        return x_cross, y_cross
+                xcharge_dict[(xi, yi)] = qxi
+            if (xi, yi) in ycharge_dict:
+                ycharge_dict[(xi, yi)] += qyi   
+            else:
+                ycharge_dict[(xi, yi)] = qyi      
+              
+        keys_are_same = set(xcharge_dict.keys()) == set(ycharge_dict.keys())
+        if not keys_are_same:
+            print('Keys are not the same!')
+        return xcharge_dict, ycharge_dict
       
     
-    def group_channels(self):
+    def group_channels(self, noise=True):
         
         self.channel_selection() # only non-noise channel over threshold remained.
 
@@ -137,21 +161,25 @@ class event_builder():
         strip_x_coll_selected = strip_x_coll_selected - self.dx
         strip_y_coll_selected = strip_y_coll_selected - self.dy
         
-        self.x_cross, self.y_cross = self.find_intersections(strip_x_coll_selected, strip_y_coll_selected, ystrip_flag_coll_selected)
+        #self.x_cross, self.y_cross, _, _ = self.find_intersections(strip_x_coll_selected, strip_y_coll_selected, q_coll_selected, ystrip_flag_coll_selected)
         #print(f'There are {len(strip_x_coll_selected)} collection strips.')
         #print(f'Total intersections of x and y collection strips is {len(self.x_cross)}.')
 
         self.time_coll, self.wf_coll, self.strip_x_coll, self.strip_y_coll, self.ystrip_flag_coll, self.charge_coll, = [], [], [], [], [], []
         self.time_all,  self.wf_all,  self.strip_x_all,  self.strip_y_all,  self.ystrip_flag_all,  self.charge_all,  = [], [], [], [], [], []
         
-        for q, wf, x, y, lid in zip(self.mc_event['q'][self.selected_coll_id], \
+        for q, wf, true_wf, x, y, lid in zip(self.mc_event['q'][self.selected_coll_id], \
                                     self.mc_event['wf'][self.selected_coll_id], \
+                                    self.mc_event['true_wf'][self.selected_coll_id], \
                                     self.mc_event['xpos'][self.selected_coll_id], \
                                     self.mc_event['ypos'][self.selected_coll_id], \
                                     self.mc_event['localid'][self.selected_coll_id]\
                                    ):
             self.time_coll.append(np.arange(len(wf))*0.5)
-            self.wf_coll.append(wf)
+            if noise:
+                self.wf_coll.append(wf)
+            else:
+                self.wf_coll.append(true_wf)
             self.strip_x_coll.append(x-self.dx)
             self.strip_y_coll.append(y-self.dy)
             self.charge_coll.append(q)
@@ -168,14 +196,18 @@ class event_builder():
         self.charge_coll        = np.array(self.charge_coll)
         self.ystrip_flag_coll   = np.array(self.ystrip_flag_coll)
             
-        for q, wf, x, y, lid in zip(self.mc_event['q'][self.selected_all_id], \
+        for q, wf, true_wf, x, y, lid in zip(self.mc_event['q'][self.selected_all_id], \
                                     self.mc_event['wf'][self.selected_all_id], \
+                                    self.mc_event['true_wf'][self.selected_all_id], \
                                     self.mc_event['xpos'][self.selected_all_id], \
                                     self.mc_event['ypos'][self.selected_all_id], \
                                     self.mc_event['localid'][self.selected_all_id]\
                                    ):
             self.time_all.append(np.arange(len(wf))*0.5)
-            self.wf_all.append(wf)
+            if noise:
+                self.wf_all.append(wf)
+            else:
+                self.wf_all.append(true_wf)
             self.strip_x_all.append(x-self.dx)
             self.strip_y_all.append(y-self.dy)
             self.charge_all.append(q)
@@ -286,7 +318,7 @@ class event_builder():
         
         if draw:
             _, ax = plt.subplots(figsize=(6, 5))
-            colors = ['blue', 'orange', 'green', 'red', 'chocolate', 'darkpink']
+            colors = ['blue', 'orange', 'green', 'red', 'chocolate', 'crimson']
             for i in range(num):
                 ax.scatter(np.array(points_x[i]), np.array(points_y[i]), s=np.array(points_E[i])*5000, fc='none', ec=colors[i], label=f'cluster {i}') 
             ax.set_xlabel('x [mm]', fontsize=13)
@@ -298,20 +330,44 @@ class event_builder():
         return cluster_x-self.dx, cluster_y-self.dy, cluster_E
 
 
-    def charge_reconstrucion(self, wf):
-        charge_wf = np.cumsum(wf)
-        return np.mean(charge_wf[-10::]), charge_wf
+    def charge_reconstrucion(self, unscaled_wf, electron):
+        Z_anode = 403 # mm
+        lifetime = 1e4 # us
+        velocity = 1.7 # mm/us
+        z = -1022.6
+        correction = np.exp((np.abs(z)-Z_anode)/velocity/lifetime)
+        # In nexo offline, there is a scale facotr 9 on the waveform amplitudes.
+        scale = 9.
+        #truth = scale * np.asarray(unscaled_truth)
+        wf = scale * np.asarray(unscaled_wf)
+        gain = 3.03
+        #if electron != 0:   
+        #    print(f'This channel collected {electron} electrons.')
+        #    print(f'But the integral of the true waveform is {np.sum(wf) / gain}.')
+        return np.sum(wf) / gain
         
-
-
+        
     def simple_reconstruction(self):
-        pass
+        event_q = 0.
+        channel_rec_q = []
+        Ncha = len(self.mc_event['q'])
+        for i in range(Ncha):
+            channel_q = self.charge_reconstrucion(self.mc_event['true_wf'][i], self.mc_event['nte'][i]) 
+            channel_rec_q.append(channel_q)
+            event_q += channel_q
+            
+        self.event_q_rec = event_q
+        self.event_q_true = np.sum(self.mc_event['q'])
+
+        channel_rec_q = np.array(channel_rec_q)
+        self.mc_event['q_rec'] = channel_rec_q
+        
+        x_cross, y_cross, cross_xstrip_charge, cross_ystrip_charge = self.find_intersections(self.strip_x_all, self.strip_y_all, self.charge_all, self.ystrip_flag_all)
+
+        return self.event_q_rec, self.event_q_true, x_cross, y_cross, cross_xstrip_charge, cross_ystrip_charge
         
 
-
-
-        
-    def _plot_channels2D(self, fitx=[], fity=[], fitq=[], truthDep=False):
+    def _plot_channels2D(self, fitx=[], fity=[], fitq=[], truthDep=False, truthNEST=False):
         x_clr = 'blue'
         y_clr = 'orange'
         xpos        = self.mc_event['xpos'][self.selected_coll_id]
@@ -322,14 +378,15 @@ class event_builder():
         tiley       = self.mc_event['ytile'][self.selected_coll_id]
         numPads, padSize = 16, 6
         for x, y, q, lid in zip(xpos, ypos, charge, localids):
-            x = x - self.dx
-            y = y - self.dy
+            #x = x - self.dx
+            #y = y - self.dy
             if lid < 16: # It is a x-strip, aligned along with the y-axis
                 rectangles = []
                 ystart = -(numPads*padSize)/2.
                 for i in range(numPads):
                     rectangles.append( plt.Rectangle((x, y+ystart+padSize*i), padSize/np.sqrt(2), padSize/np.sqrt(2), fc=x_clr,ec=(0.,0.,0.,1.),angle=45., alpha=1.0) )
                     plt.gca().add_patch(rectangles[i])
+                plt.plot(x, y, '*', color='brown', markersize=8, alpha=0.5)
 
             else:
                 rectangles = []
@@ -337,6 +394,22 @@ class event_builder():
                 for i in range(numPads):
                     rectangles.append( plt.Rectangle((x+xstart+padSize*i+padSize/2., y-padSize/2.), padSize/np.sqrt(2), padSize/np.sqrt(2), fc=y_clr,ec=(0.,0.,0.,1.),angle=45., alpha=1.0) )
                     plt.gca().add_patch(rectangles[i])
+                plt.plot(x, y, 'd', color='crimson', markersize=8, alpha=0.5)
+        txmin, txmax, tymin, tymax = 1e5, -1e5, 1e5, -1e5
+        for tx, ty in zip(tilex, tiley):
+            #tx = tx - self.dx
+            #ty = ty - self.dy
+            if tx > txmax:
+                txmax = tx
+            if tx < txmin:
+                txmin = tx
+            if ty > tymax:
+                tymax = ty
+            if ty < tymin:
+                tymin = ty
+                
+            rec = plt.Rectangle((tx-96/2., ty-96/2.), 96., 96., fc='none', ec='black', lw=0.8)
+            plt.gca().add_patch(rec)
         
         xpos        = self.mc_event['xpos'][self.selected_other_id]
         ypos        = self.mc_event['ypos'][self.selected_other_id]
@@ -347,14 +420,15 @@ class event_builder():
 
         numPads, padSize = 16, 6
         for x, y, q, lid in zip(xpos, ypos, charge, localids):
-            x = x - self.dx
-            y = y - self.dy
+            #x = x - self.dx
+            #y = y - self.dy
             if lid < 16: # It is a x-strip, aligned along with the y-axis
                 rectangles = []
                 ystart = -(numPads*padSize)/2.
                 for i in range(numPads):
                     rectangles.append( plt.Rectangle((x, y+ystart+padSize*i), padSize/np.sqrt(2), padSize/np.sqrt(2), fc=x_clr,ec=(0.,0.,0.,1.),angle=45., alpha=0.5) )
                     plt.gca().add_patch(rectangles[i])
+                plt.plot(x, y, '*', color='brown', markersize=8, alpha=0.5)
 
             else:
                 rectangles = []
@@ -362,13 +436,14 @@ class event_builder():
                 for i in range(numPads):
                     rectangles.append( plt.Rectangle((x+xstart+padSize*i+padSize/2., y-padSize/2.), padSize/np.sqrt(2), padSize/np.sqrt(2), fc=y_clr,ec=(0.,0.,0.,1.),angle=45., alpha=0.5) )
                     plt.gca().add_patch(rectangles[i])
+                plt.plot(x, y, 'd', color='crimson', markersize=8, alpha=0.5)
 
         
 
         txmin, txmax, tymin, tymax = 1e5, -1e5, 1e5, -1e5
         for tx, ty in zip(tilex, tiley):
-            tx = tx - self.dx
-            ty = ty - self.dy
+            #tx = tx - self.dx
+            #ty = ty - self.dy
             if tx > txmax:
                 txmax = tx
             if tx < txmin:
@@ -391,6 +466,11 @@ class event_builder():
             event_E     = self.mc_event['event_E']
             sum_E       = np.sum(event_E)
             plt.scatter(event_x-self.dx, event_y-self.dy, s=event_E/sum_E*100, fc='none', ec='green', alpha=0.8, label='true deposition')
+
+        if truthNEST:
+            nest_x, nest_y, nest_q = self.mc_event['nest_hitx'], self.mc_event['nest_hity'], self.mc_event['nest_hitnte']
+            print(f'Draw the NEST truth hits: total {len(nest_x)} hits.')
+            plt.scatter(nest_x, nest_y, s=nest_q/100, fc='none', ec='green', alpha=0.8, label='true NEST')
         
         
         edges = ['red', 'black', 'pink', 'green']
@@ -402,3 +482,4 @@ class event_builder():
         plt.legend(prop={'size':12})
         
         plt.tight_layout()
+        

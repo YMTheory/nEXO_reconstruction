@@ -16,12 +16,19 @@ class loader():
         self.fXPosition     = None
         self.fYPosition     = None
         self.fCharge        = None
+        self.fChannelNTE    = None
         self.fNoiseTag      = None
 
         self.fEventXpos     = None
         self.fEventYpos     = None
         self.fEventZpos     = None
         self.fDepositE      = None
+        
+        self.fNESTHitX      = None
+        self.fNESTHitY      = None
+        self.fNESTHitZ      = None
+        self.fNESTHitNTE    = None
+        self.fNESTHitType   = None
         
         self.dx             = 0.
         self.dy             = 0.
@@ -35,6 +42,7 @@ class loader():
             tree = f['Event/Elec/ElecEvent']
             #print(tree.keys())
             self.fWFAndNoise    = tree['ElecEvent/fElecChannels/fElecChannels.fWFAndNoise'].array(entry_start=self.start_evt, entry_stop=self.start_evt+self.load_nentries)
+            self.fTrueWF        = tree['ElecEvent/fElecChannels/fElecChannels.fTrueWF'].array(entry_start=self.start_evt, entry_stop=self.start_evt+self.load_nentries)
             self.fXPosition     = tree['ElecEvent/fElecChannels/fElecChannels.fXPosition'].array(entry_start=self.start_evt, entry_stop=self.start_evt+self.load_nentries)
             self.fYPosition     = tree['ElecEvent/fElecChannels/fElecChannels.fYPosition'].array(entry_start=self.start_evt, entry_stop=self.start_evt+self.load_nentries)
             self.fCharge        = tree['ElecEvent/fElecChannels/fElecChannels.fChannelCharge'].array(entry_start=self.start_evt, entry_stop=self.start_evt+self.load_nentries)
@@ -42,13 +50,19 @@ class loader():
             self.fTileX         = tree['ElecEvent/fElecChannels/fElecChannels.fxTile'].array(entry_start=self.start_evt, entry_stop=self.start_evt+self.load_nentries)
             self.fTileY         = tree['ElecEvent/fElecChannels/fElecChannels.fyTile'].array(entry_start=self.start_evt, entry_stop=self.start_evt+self.load_nentries)
             self.fNoiseTag      = tree['ElecEvent/fElecChannels/fElecChannels.fChannelNoiseTag'].array(entry_start=self.start_evt, entry_stop=self.start_evt+self.load_nentries)
+            self.fChannelNTE    = tree['ElecEvent/fElecChannels/fElecChannels.fChannelNTE'].array(entry_start=self.start_evt, entry_stop=self.start_evt+self.load_nentries)
             
             tree = f['Event/Sim/SimEvent']
             self.fEventXpos     = tree['SimEvent/fXpos'].array(entry_start=self.start_evt, entry_stop=self.start_evt+self.load_nentries)
             self.fEventYpos     = tree['SimEvent/fYpos'].array(entry_start=self.start_evt, entry_stop=self.start_evt+self.load_nentries)
             self.fEventZpos     = tree['SimEvent/fZpos'].array(entry_start=self.start_evt, entry_stop=self.start_evt+self.load_nentries)
             self.fDepositE      = tree['SimEvent/fEnergyDeposit'].array(entry_start=self.start_evt, entry_stop=self.start_evt+self.load_nentries)
-            
+
+            self.fNESTHitX      = tree['SimEvent/fNESTHitX'].array(entry_start=self.start_evt, entry_stop=self.start_evt+self.load_nentries)
+            self.fNESTHitY      = tree['SimEvent/fNESTHitY'].array(entry_start=self.start_evt, entry_stop=self.start_evt+self.load_nentries)
+            self.fNESTHitZ      = tree['SimEvent/fNESTHitZ'].array(entry_start=self.start_evt, entry_stop=self.start_evt+self.load_nentries)    
+            self.fNESTHitNTE    = tree['SimEvent/fNESTHitNTE'].array(entry_start=self.start_evt, entry_stop=self.start_evt+self.load_nentries)  
+            self.fNESTHitType   = tree['SimEvent/fNESTHitType'].array(entry_start=self.start_evt, entry_stop=self.start_evt+self.load_nentries)  
 
     def _get_one_event(self, evtid):
         if evtid < self.start_evt or evtid >= self.start_evt + self.load_nentries:
@@ -57,6 +71,7 @@ class loader():
         else:
             one_event = {}
             one_event['wf'] = self.fWFAndNoise[evtid - self.start_evt]
+            one_event['true_wf'] = self.fTrueWF[evtid - self.start_evt]
             one_event['xpos'] = self.fXPosition[evtid - self.start_evt]
             one_event['ypos'] = self.fYPosition[evtid - self.start_evt]
             one_event['xtile'] = self.fTileX[evtid - self.start_evt]
@@ -68,10 +83,16 @@ class loader():
             one_event['event_y'] = self.fEventYpos[evtid - self.start_evt]
             one_event['event_z'] = self.fEventZpos[evtid - self.start_evt]
             one_event['event_E'] = self.fDepositE[evtid - self.start_evt]
+            one_event['nte'] = self.fChannelNTE[evtid - self.start_evt]
+            one_event['nest_hitx'] = self.fNESTHitX[evtid - self.start_evt]
+            one_event['nest_hity'] = self.fNESTHitY[evtid - self.start_evt]
+            one_event['nest_hitz'] = self.fNESTHitZ[evtid - self.start_evt] 
+            one_event['nest_hitnte'] = self.fNESTHitNTE[evtid - self.start_evt] 
+            one_event['nest_hittype'] = self.fNESTHitType[evtid - self.start_evt] 
             return one_event
         
     
-    def _plot_topo2d(self, evtid, noiseFlag=False, numPads=16, padSize=6.0, truthDepPos=False, fitPos=[], truthPCD=False, PCDs=[]):
+    def _plot_topo2d(self, evtid, noiseFlag=False, numPads=16, padSize=6.0, truthDepPos=False, trueNESTHitPos=False, fitPos=[], truthPCD=False, PCDs=[]):
         x_clr = 'blue'
         y_clr = 'orange'
         one_event = self._get_one_event(evtid)
@@ -85,6 +106,9 @@ class loader():
         event_y = one_event['event_y']
         event_z = one_event['event_z']
         event_E = one_event['event_E']
+        nest_x = one_event['nest_hitx']
+        nest_y = one_event['nest_hity']
+        nest_n = one_event['nest_hitnte']
         for x, y, q, lid in zip(xpos, ypos, charge, localids):
             if 0 < q < 600 and not noiseFlag:
                 continue
@@ -130,8 +154,11 @@ class loader():
         if truthPCD:
             plt.scatter(PCDs[0], PCDs[1], s=PCDs[2], color='green', alpha=0.3)
 
+        if trueNESTHitPos:
+            plt.scatter(nest_x, nest_y, s=nest_n/100, color='green', fc='none', ec='green', lw=0.6)
+
         if truthDepPos:
-            print(event_x[1], event_y[1], event_z[1])
+            #print(event_x[1], event_y[1], event_z[1])
             #plt.scatter(event_x, event_y, s=np.abs(event_z)/10., color='red', fc='none', ec='red', lw=0.5)
             plt.scatter(event_x, event_y, s=event_E*500, color='red', fc='none', ec='red', lw=0.5)
 

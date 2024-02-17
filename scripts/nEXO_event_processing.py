@@ -48,8 +48,8 @@ class event_builder():
         self.ystrip_flag_all = None
         self.charge_rec_all = None
         
-        self.fit_t1     = -90
-        self.fit_t2     = -20
+        self.fit_t1     = 0
+        self.fit_t2     = -1
         
         # event level info:
         self.event_q_rec = 0.
@@ -482,4 +482,24 @@ class event_builder():
         plt.legend(prop={'size':12})
         
         plt.tight_layout()
+        
+
+    def _plot_channel_waveforms(self, noise=True):
+        n_chanenls = len(self.wf_all)
+        nrow = int(n_chanenls/5) + 1
+        
+        fig, ax = plt.subplots(nrow, 5, figsize=(15, 3*nrow))
+        for i in range(n_chanenls):
+            irow = int(i/5)
+            icol = int(i%5)
+            ax[irow, icol].plot(self.time_all[i], self.wf_all[i], label=f'Q={self.charge_all[i]}')
+            ax[irow, icol].set_xlabel('time [us]', fontsize=10)
+            ax[irow, icol].set_ylabel('current amplitude [ADC]', fontsize=10)
+            ax[irow, icol].tick_params(axis='both', labelsize=8)
+            ax[irow, icol].legend(fontsize=10)
+            type = 'Y' if self.ystrip_flag_all[i] else 'X'
+            ax[irow, icol].set_title(f'{type}-strip @({self.strip_x_all[i]+self.dx}, {self.strip_y_all[i]+self.dy})', fontsize=12)
+        plt.tight_layout()
+        
+        return fig
         

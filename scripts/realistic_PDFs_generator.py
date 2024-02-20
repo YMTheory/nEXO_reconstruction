@@ -52,6 +52,8 @@ class generator():
         
         self.strip_charge_time = None
         self.strip_charge_waveform = None
+        self.strip_quantized_current_time = None
+        self.strip_quantized_current_waveform = None
 
     def diffusion_PDF(self, X0, X): 
         '''
@@ -125,3 +127,8 @@ class generator():
         self.strip_charge_waveform = np.array(induced_chargeWF_onStrip)
         
 
+    def quantize_waveform(self):
+        self.digi.convolve_asic_response(self.strip_charge_time, self.strip_charge_waveform)
+        self.digi.quantization_trueWF(self.digi.cryoAmp, 40000.)
+        self.strip_quantized_current_waveform = self.digi.fTruth
+        self.strip_quantized_current_time = np.arange(0, len(self.strip_quantized_current_waveform), 1) * 0.5

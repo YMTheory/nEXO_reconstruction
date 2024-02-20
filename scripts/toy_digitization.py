@@ -124,6 +124,9 @@ class digitization():
         for i in range(waveformSize):
             self.asic_noise_amp.append(noise_vec[cut_start+i])
         
+    def quantization_trueWF(self, cryoAmp, Saturation):
+        self.fTruth = np.array(cryoAmp) / (int(Saturation/4096))
+        self.fTruth = np.round(self.fTruth)
 
 
     def quantization(self, cryoAmp, noiseAmp, Saturation):

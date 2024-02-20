@@ -4,7 +4,7 @@ import ROOT
 
 class nEXOFieldWP:
     def __init__(self):
-        self.filename = '/Users/yumiao/Documents/Works/0nbb/nEXO/offline-samples/weighting_potentials/singleStripWP6mm.root'
+        self.filename = '/Users/yumiao/Documents/Works/0nbb/nEXO/offline-samples/weighting_potentials/singleStripWP6mm_COMSOL.root'
         
         self.xaxis = []
         self.yaxis = []
@@ -25,7 +25,7 @@ class nEXOFieldWP:
     
     def GetHist(self, xId, yId):
         name = f'wp_x{xId}_y{yId}'
-        print(f'Fetching histogram: {name}')
+        #print(f'Fetching histogram: {name}')
         f = up.open(self.filename)
         hist = f[name]
         conts, edges = hist.to_numpy()

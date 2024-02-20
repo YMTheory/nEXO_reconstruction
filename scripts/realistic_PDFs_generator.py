@@ -2,8 +2,9 @@
 
 import numpy as np
 
-from SignalCalculator import SignalCalculator
-from toy_digitization import digitization
+from scripts.SignalCalculator import SignalCalculator
+from scripts.toy_digitization import digitization
+from scripts.waveform_WP import waveform_WP
 
 from IPython import get_ipython
 def isnotebook():
@@ -24,24 +25,33 @@ else:
 
 class generator():
     
-    def __init__(self) -> None:
+    def __init__(self, x0=0., y0=0., z0=-1022., q0=1e5, xy_step=1., z_step=1.) -> None:
         self.digi = digitization(SamplingFrequency=2.0)
         
-        self.x0 = 0
-        self.y0 = 0
-        self.z0 = 0
-        self.q0 = 1.0
-        self.t0 = 0
+        self.x0 = x0
+        self.y0 = y0
+        self.z0 = z0
+        self.q0 = q0
+        self.t0 = 0.
         
         self.charge_cubic_L = 10.0 #mm
         self.charge_cubic_H = 6.0  #mm
-        self.n_step_L = 50
-        self.n_step_H = 30
+        self.n_step_L = int(self.charge_cubic_L/xy_step)
+        self.n_step_H = int(self.charge_cubic_H/z_step)
         self.q_cubic = np.zeros((self.n_step_L, self.n_step_L, self.n_step_H))
         
         self.DT = 53.*100/1e6 # mm2/us
         self.DL = 24.8*100/1e6 #mm2/us
         self.v_drift = 1.70 # mm/us
+        self.sampling_rate = 2.0 # MHz
+        self.fAnodeZ = -402.97 #mm
+
+        self.wp_gen = waveform_WP()
+        self.wp_gen.initialize()
+        self.wp_gen.initialize_PCDZ(np.arange(self.z0-self.charge_cubic_H/2., self.z0+self.charge_cubic_H/2., z_step))
+        
+        self.strip_charge_time = None
+        self.strip_charge_waveform = None
 
     def diffusion_PDF(self, X0, X): 
         '''
@@ -59,8 +69,6 @@ class generator():
         
         return prob
         
-           
-        
         
     def diffused_point_charges(self):
         v_grid = (self.charge_cubic_L/self.n_step_L)**2 * (self.charge_cubic_H / self.n_step_H)
@@ -74,44 +82,46 @@ class generator():
                     
         # normalization
         self.q_cubic = self.q_cubic * (self.q0 / np.sum(self.q_cubic))
+        print(f"-> Smearing charge density in three-dimension: sigma_xy = {self.DL} mm2/us and sigma_z = {self.DT} mm2/us.")
 
-    def induced_currentWF_onStrip(self, strip_x, strip_y, IsAYstrip=True):
-        induced_currentWF_onStrip = []
+    def induced_currentWF_onStrip(self, strip_x, strip_y, IsAXstrip=True):
+        minZ, maxZ = self.z0 - self.charge_cubic_H/2., self.z0 + self.charge_cubic_H/2.
+        self.wp_gen.DetermineSamplingSequence(maxZ, minZ)
+        
+        self.diffused_point_charges()
+        
+        induced_time_onStrip = 0.
+        induced_chargeWF_onStrip = []
+        
         for i, xc in tqdm(enumerate(np.linspace(-self.charge_cubic_L/2.+self.x0, self.charge_cubic_L/2.+self.x0, self.n_step_L))):
             for j, yc in enumerate(np.linspace(-self.charge_cubic_L/2.+self.y0, self.charge_cubic_L/2.+self.y0, self.n_step_L)):
                 for k, zc in enumerate(np.linspace(-self.charge_cubic_H/2., self.charge_cubic_H/2., self.n_step_H)):
+                    xc = self.x0 + xc
+                    yc = self.y0 + yc
+                    z = self.fAnodeZ - (self.z0 + zc)
                     if self.q_cubic[i, j, k] < 1.0:
                         continue
                     else:
-                        if IsAYstrip:
+                        if IsAXstrip:
                             x_rel, y_rel = xc - strip_x, yc - strip_y
                         else:
                             x_rel, y_rel = yc - strip_y, xc - strip_x
-                        z = self.z0 + zc
-                        _, induced_currentWF_onStrip_oneGrid = SignalCalculator.ComputeChargeWaveformOnStripWithIons(self.q_cubic[i, j, k], x_rel, y_rel, z)
-                        induced_currentWF_onStrip_oneGrid = np.array(induced_currentWF_onStrip_oneGrid)
-                        if len(induced_currentWF_onStrip) == 0:
-                            induced_currentWF_onStrip = induced_currentWF_onStrip_oneGrid
+                        x_rel, y_rel = np.abs(x_rel), np.abs(y_rel)
+                        dx_a, dy_a = int(x_rel/6.0), int(y_rel/6.0)
+                        #_, induced_currentWF_onStrip_oneGrid = SignalCalculator.ComputeChargeWaveformOnStripWithIons(self.q_cubic[i, j, k], x_rel, y_rel, z)
+                        self.wp_gen.CalcPointChargeWaveformOnChannel(x_rel, y_rel, z, self.q_cubic[i, j, k])
+                        inducde_time_onStrip_oneGrid     = self.wp_gen.onechannel_time_pointcharge
+                        induced_chargeWF_onStrip_oneGrid = self.wp_gen.onechannel_wf_pointcharge
+                        if len(induced_chargeWF_onStrip_oneGrid) == 0:
+                            continue
                         else:
-                            induced_currentWF_onStrip += induced_currentWF_onStrip_oneGrid
-        return induced_currentWF_onStrip
+                            induced_time_onStrip = inducde_time_onStrip_oneGrid
+                            if len(induced_chargeWF_onStrip) == 0:
+                                induced_chargeWF_onStrip = np.array(induced_chargeWF_onStrip_oneGrid)
+                            else:
+                                induced_chargeWF_onStrip += induced_chargeWF_onStrip_oneGrid
 
-
-
-    
-    def SetSamplingZSeqTemplate(self):
-        tmax = 1500
-        tmin = 20
-        n = 50
-        ZBinsVec = [np.exp((1-i/(n+1.)) * np.log(tmax) + i/(n+1) * np.log(tmin) ) for i in range(n)]
+        self.strip_charge_time = np.array(induced_time_onStrip)
+        self.strip_charge_waveform = np.array(induced_chargeWF_onStrip)
         
-        # linear spaced fine sampling at short distances
-        dZ = ZBinsVec[-2] - ZBinsVec[-1]
-        while ZBinsVec[-1] > 1.3 * dZ:
-            ZBinsVec.append(ZBinsVec[-1] - dZ)
-        ZBinsVec.append(0)
-        
-        print(ZBinsVec)
-            
-
 

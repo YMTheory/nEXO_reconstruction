@@ -12,6 +12,7 @@ class loader():
         self.fWFAndNoise    = None
         self.fTileX         = None
         self.fTileY         = None
+        self.fTileID        = None
         self.fLocalID       = None
         self.fXPosition     = None
         self.fYPosition     = None
@@ -47,6 +48,7 @@ class loader():
             self.fYPosition     = tree['ElecEvent/fElecChannels/fElecChannels.fYPosition'].array(entry_start=self.start_evt, entry_stop=self.start_evt+self.load_nentries)
             self.fCharge        = tree['ElecEvent/fElecChannels/fElecChannels.fChannelCharge'].array(entry_start=self.start_evt, entry_stop=self.start_evt+self.load_nentries)
             self.fLocalID       = tree['ElecEvent/fElecChannels/fElecChannels.fChannelLocalId'].array(entry_start=self.start_evt, entry_stop=self.start_evt+self.load_nentries)
+            self.fTileId        = tree['ElecEvent/fElecChannels/fElecChannels.fTileId'].array(entry_start=self.start_evt, entry_stop=self.start_evt+self.load_nentries)
             self.fTileX         = tree['ElecEvent/fElecChannels/fElecChannels.fxTile'].array(entry_start=self.start_evt, entry_stop=self.start_evt+self.load_nentries)
             self.fTileY         = tree['ElecEvent/fElecChannels/fElecChannels.fyTile'].array(entry_start=self.start_evt, entry_stop=self.start_evt+self.load_nentries)
             self.fNoiseTag      = tree['ElecEvent/fElecChannels/fElecChannels.fChannelNoiseTag'].array(entry_start=self.start_evt, entry_stop=self.start_evt+self.load_nentries)
@@ -76,6 +78,7 @@ class loader():
             one_event['ypos'] = self.fYPosition[evtid - self.start_evt]
             one_event['xtile'] = self.fTileX[evtid - self.start_evt]
             one_event['ytile'] = self.fTileY[evtid - self.start_evt]
+            one_event['tileId'] = self.fTileId[evtid - self.start_evt]
             one_event['q'] = self.fCharge[evtid - self.start_evt]
             one_event['localid'] = self.fLocalID[evtid - self.start_evt]
             one_event['noise_tag'] = self.fNoiseTag[evtid - self.start_evt]

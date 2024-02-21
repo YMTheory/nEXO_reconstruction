@@ -1,5 +1,6 @@
 import numpy as np
 import uproot as up
+from array import array
 import ROOT
 
 class nEXOFieldWP:
@@ -49,8 +50,11 @@ class nEXOFieldWP:
         self.xaxis = f['xaxis'].edges()
         self.yaxis = f['yaxis'].edges()
 
-        self.t_xaxis = ROOT.TAxis(len(self.xaxis)-1, self.xaxis[0], self.xaxis[-1])
-        self.t_yaxis = ROOT.TAxis(len(self.yaxis)-1, self.yaxis[0], self.yaxis[-1])
+        xaxis_edges = array('d', self.xaxis)
+        yaxis_edges = array('d', self.yaxis)
+        
+        self.t_xaxis = ROOT.TAxis(len(self.xaxis)-1, xaxis_edges)
+        self.t_yaxis = ROOT.TAxis(len(self.yaxis)-1, yaxis_edges)
         
 
         

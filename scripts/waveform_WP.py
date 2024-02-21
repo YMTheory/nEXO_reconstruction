@@ -130,7 +130,7 @@ class waveform_WP:
         for j in range(len(self.fSamplingSeqZ)):
             deltaZ = self.fSamplingSeqZ[j]
             amplitude = 0.
-            if iniZ-deltaZ >= 0.0:
+            if iniZ-deltaZ > 0.0:
                 amplitude = self.wp.interpolate( iniZ - deltaZ)
                 #print(iniZ-deltaZ, amplitude)
             else:
@@ -145,6 +145,9 @@ class waveform_WP:
         samplingTime = 0.
         for j in range(len(self.fSamplingSeqZ)):
             samplingTime = self.fSamplingSeqZ[j] / (self.v_drift)
+            dist_anode = iniZ - self.fSamplingSeqZ[j]
+            if 0.0 < dist_anode < 0.05:
+                continue
             self.onechannel_time_pointcharge.append(samplingTime)
             self.onechannel_wf_pointcharge.append(wf[j])    
         # Fill the last two points:

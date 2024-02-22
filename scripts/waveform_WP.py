@@ -13,7 +13,7 @@ class waveform_WP:
         
         self.fPCDZ = None
         
-        self.v_drift = 1.7 # mm / us
+        self.v_drift = 1.74987 # mm / us
         self.sampling_interval = 0.5 # us
         self.fAnodeZ = -402.97 # unit: mm
         

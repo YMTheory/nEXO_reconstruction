@@ -1,3 +1,4 @@
 asic_model_file: /Users/yumiao/Documents/Works/0nbb/nEXO/offline-samples/cryo_asic_model.root
 asic_noise_file: /Users/yumiao/Documents/Works/0nbb/nEXO/offline-samples/noise_lib_1_2_us_100e.root
 asic_noise_psd_file: /Users/yumiao/Documents/Works/0nbb/nEXO/offline-samples/noise_unshape.root
+wp_file: /Users/yumiao/Documents/Works/0nbb/nEXO/offline-samples/weighting_potentials/singleStripWP6mm_COMSOL.root

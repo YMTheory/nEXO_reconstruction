@@ -4,6 +4,7 @@
 
 import numpy as np
 import uproot as up
+import yaml
 
 from scripts.SignalCalculator import SignalCalculator
 
@@ -12,14 +13,19 @@ class digitization():
         self.SamplingFrequency = SamplingFrequency      # unit: MHz
         self.SamplingInterval  = 1./SamplingFrequency   # unit: us
 
+        with open('/Users/yumiao/Documents/Works/0nbb/nEXO/Reconstruction/waveform/nEXO_reconstruction/scripts/config.yml', 'r' ) as config_file:
+            
+            filelist = yaml.safe_load(config_file)
+            self.asic_model_file = filelist['asic_model_file']
+            self.asic_noise_psd_file = filelist['asic_noise_psd_file']
+            self.asic_noise_file = filelist['asic_noise_file']
+
+
         self.asic_response_flag = False
-        self.asic_model_file = '/Users/yumiao/Documents/Works/0nbb/nEXO/offline-samples/cryo_asic_model.root'
         self.asic_response_amp = []
 
-        self.asic_noise_file = '/Users/yumiao/Documents/Works/0nbb/nEXO/offline-samples/noise_lib_1_2_us_100e.root'
         self.asic_noise_amp  = []
         self.asic_noises = []
-        self.asic_noise_psd_file = '/Users/yumiao/Documents/Works/0nbb/nEXO/offline-samples/noise_unshape.root'
 
         self.preTime, self.preAmp = None, None
         self.cryoTime = []

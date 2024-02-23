@@ -2,10 +2,25 @@ import numpy as np
 import uproot as up
 from array import array
 import ROOT
+import yaml
+from scripts.globals import run_env
 
 class nEXOFieldWP:
     def __init__(self):
-        self.filename = '/Users/yumiao/Documents/Works/0nbb/nEXO/offline-samples/weighting_potentials/singleStripWP6mm_COMSOL.root'
+
+        if run_env == 'local':
+            ymlfile = '/Users/yumiao/Documents/Works/0nbb/nEXO/Reconstruction/waveform/nEXO_reconstruction/scripts/config.yml'
+        elif run_env == 'IHEP':
+            ymlfile = '/junofs/users/miaoyu/0nbb/reconstruction/nEXO_reconstruction/scripts/config.yml'
+        elif run_env == 'LLNL':
+            pass
+        elif run_env == "SLAC":
+            pass
+        else:
+            print(f'Error: wrong run environment configuration {run_env}. ')
+        
+        with open(ymlfile, 'r') as config_file:
+            self.filename = yaml.safe_load(config_file)['wp_file']
         
         self.xaxis = []
         self.yaxis = []

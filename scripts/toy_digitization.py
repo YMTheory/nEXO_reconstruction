@@ -7,13 +7,24 @@ import uproot as up
 import yaml
 
 from scripts.SignalCalculator import SignalCalculator
+from scripts.globals import run_env
 
 class digitization():
     def __init__(self, SamplingFrequency) -> None:
         self.SamplingFrequency = SamplingFrequency      # unit: MHz
         self.SamplingInterval  = 1./SamplingFrequency   # unit: us
 
-        with open('/Users/yumiao/Documents/Works/0nbb/nEXO/Reconstruction/waveform/nEXO_reconstruction/scripts/config.yml', 'r' ) as config_file:
+        if run_env == 'local':
+            ymlfile = '/Users/yumiao/Documents/Works/0nbb/nEXO/Reconstruction/waveform/nEXO_reconstruction/scripts/config.yml'
+        elif run_env == 'IHEP':
+            ymlfile = '/junofs/users/miaoyu/0nbb/reconstruction/nEXO_reconstruction/scripts/config.yml'
+        elif run_env == 'LLNL':
+            pass
+        elif run_env == "SLAC":
+            pass
+        else:
+            print(f'Error: wrong run environment configuration {run_env}. ')
+        with open(ymlfile, 'r' ) as config_file:
             
             filelist = yaml.safe_load(config_file)
             self.asic_model_file = filelist['asic_model_file']

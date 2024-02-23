@@ -2,7 +2,7 @@ import numpy as np
 import os
 
 class loader():
-    def __init__(self, filename):
+    def __init__(self):
         self.grid_diffused_PDFs = None
         self.load_PDF_flag      = False
         self.pdf_length         = 0

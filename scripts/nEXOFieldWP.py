@@ -11,7 +11,7 @@ class nEXOFieldWP:
         if run_env == 'LOCAL':
             ymlfile = '/Users/yumiao/Documents/Works/0nbb/nEXO/Reconstruction/waveform/nEXO_reconstruction/scripts/config.yml'
         elif run_env == 'IHEP':
-            ymlfile = '/junofs/users/miaoyu/0nbb/reconstruction/nEXO_reconstruction/scripts/config.yml'
+            ymlfile = '/junofs/users/miaoyu/0nbb/reconstruction/nEXO_reconstruction/scripts/config_IHEP.yml'
         elif run_env == 'LLNL':
             pass
         elif run_env == "SLAC":

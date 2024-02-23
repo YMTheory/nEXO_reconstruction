@@ -8,7 +8,7 @@ from scripts.globals import run_env
 class nEXOFieldWP:
     def __init__(self):
 
-        if run_env == 'local':
+        if run_env == 'LOCAL':
             ymlfile = '/Users/yumiao/Documents/Works/0nbb/nEXO/Reconstruction/waveform/nEXO_reconstruction/scripts/config.yml'
         elif run_env == 'IHEP':
             ymlfile = '/junofs/users/miaoyu/0nbb/reconstruction/nEXO_reconstruction/scripts/config.yml'

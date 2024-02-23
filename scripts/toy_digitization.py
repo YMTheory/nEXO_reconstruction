@@ -14,7 +14,7 @@ class digitization():
         self.SamplingFrequency = SamplingFrequency      # unit: MHz
         self.SamplingInterval  = 1./SamplingFrequency   # unit: us
 
-        if run_env == 'local':
+        if run_env == 'LOCAL':
             ymlfile = '/Users/yumiao/Documents/Works/0nbb/nEXO/Reconstruction/waveform/nEXO_reconstruction/scripts/config.yml'
         elif run_env == 'IHEP':
             ymlfile = '/junofs/users/miaoyu/0nbb/reconstruction/nEXO_reconstruction/scripts/config.yml'

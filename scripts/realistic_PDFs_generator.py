@@ -76,8 +76,8 @@ class generator():
         v_grid = (self.charge_cubic_L/self.n_step_L)**2 * (self.charge_cubic_H / self.n_step_H)
         for i, xc in tqdm(enumerate(np.linspace(-self.charge_cubic_L/2.+self.x0, self.charge_cubic_L/2.+self.x0, self.n_step_L))):
             for j, yc in enumerate(np.linspace(-self.charge_cubic_L/2.+self.y0, self.charge_cubic_L/2.+self.y0, self.n_step_L)):
-                for k, zc in enumerate(np.linspace(-self.charge_cubic_H/2., self.charge_cubic_H/2., self.n_step_H)):
-                    tc = np.abs(self.z0 - 0) / self.v_drift
+                for k, zc in enumerate(np.linspace(-self.charge_cubic_H/2.+self.fAnodeZ, self.charge_cubic_H/2.+self.fAnodeZ, self.n_step_H)):
+                    tc = np.abs(self.fAnodeZ - self.z0) / self.v_drift
                     X0, X = (self.x0, self.y0, self.z0, 0), (xc, yc, zc, tc)
                     prob_grid = self.diffusion_PDF(X0, X) 
                     self.q_cubic[i, j, k] = prob_grid * self.q0 * v_grid

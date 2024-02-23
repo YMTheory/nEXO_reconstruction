@@ -8,9 +8,9 @@ import pandas as pd
 
 from scripts.nEXO_loader import loader
 
-from sklearn.cluster import KMeans
-from sklearn.cluster import DBSCAN
-from sklearn.cluster import OPTICS, cluster_optics_dbscan
+#from sklearn.cluster import KMeans
+#from sklearn.cluster import DBSCAN
+#from sklearn.cluster import OPTICS, cluster_optics_dbscan
 
 
 class event_builder():
@@ -499,6 +499,7 @@ class event_builder():
             ax[irow, icol].legend(fontsize=10)
             type = 'Y' if self.ystrip_flag_all[i] else 'X'
             ax[irow, icol].set_title(f'{type}-strip @({self.strip_x_all[i]+self.dx}, {self.strip_y_all[i]+self.dy})', fontsize=12)
+            ax[irow, icol].set_xlim(300, 400)
         plt.tight_layout()
         
         return fig

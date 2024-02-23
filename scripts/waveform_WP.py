@@ -76,6 +76,7 @@ class waveform_WP:
         
         for zelem in Zseq:
             self.fPCDZ.Fill(zelem)
+
     
     
     def DetermineSamplingSequence(self, maxZ, minZ):
@@ -108,6 +109,21 @@ class waveform_WP:
             currentBin = b1
 
         print(f'Diffused charges distribute between {minZ} to {maxZ} with {len(self.fSamplingSeqZ)} sampling points.')
+
+        
+    def IsPointChargeOnStrip(self, dX, dY, IsXStrip=True):
+        PadSize = 6.0
+        HalfPadSize = PadSize / 2.0
+        if not IsXStrip:
+           dX0, dY0 = dX, dY
+           dX, dY = dY0, dX0
+        dx_a, dy_a = dX % PadSize, dY % PadSize
+        if dY < 48. and dX < HalfPadSize and ( (dy_a < (HalfPadSize - dx_a)) or (dy_a > (HalfPadSize + dx_a)) ):
+            return True
+        else:   
+            return False 
+        
+        
             
     def CalcPointChargeWaveformOnChannel(self, dX, dY, iniZ, Q):
         ## The input dX and dY are the distance from the charge to the channel center in mm.
@@ -120,22 +136,24 @@ class waveform_WP:
         if xId > 300 or yId > 300:
             print(f'The charge is too far from the strip ({dX:.2f} mm, {dY:.2f} mm).')
             return
-        dx_a, dy_a = dX % PadSize, dY % PadSize
+        #dx_a, dy_a = dX % PadSize, dY % PadSize
         self.wp.GetHist(xId, yId)
         qIon = self.wp.interpolate(iniZ) # Ion is assumed to be not moving.
         totalIonQ = qIon / 1e5 * Q
         NTE = 0.
-        if (dY < 48. and dX < HalfPadSize and (dy_a < (HalfPadSize - dx_a) or (dy_a > (HalfPadSize + dx_a)))):
+        #if (dY < 48. and dX < HalfPadSize and (dy_a < (HalfPadSize - dx_a) or (dy_a > (HalfPadSize + dx_a)))):
+        if self.IsPointChargeOnStrip(dX, dY):
             NTE = Q
         for j in range(len(self.fSamplingSeqZ)):
             deltaZ = self.fSamplingSeqZ[j]
             amplitude = 0.
-            if iniZ-deltaZ > 0.0:
+            if iniZ-deltaZ >= 0.05:
                 amplitude = self.wp.interpolate( iniZ - deltaZ)
             elif 0.0 < iniZ-deltaZ < 0.05:
                 amplitude = self.wp.interpolate(0.05)
             else:
-                if (dY < 48. and dX < HalfPadSize and (dy_a < (HalfPadSize - dx_a) or (dy_a > (HalfPadSize + dx_a)))):
+                #if (dY < 48. and dX < HalfPadSize and (dy_a < (HalfPadSize - dx_a) or (dy_a > (HalfPadSize + dx_a)))):
+                if self.IsPointChargeOnStrip(dX, dY):
                     #print(iniZ, iniZ-deltaZ, dX, dY, amplitude)
                     amplitude = 1e5
                 else:
@@ -160,7 +178,6 @@ class waveform_WP:
         self.onechannel_time_pointcharge = np.array(self.onechannel_time_pointcharge)
         self.onechannel_wf_pointcharge = np.array(self.onechannel_wf_pointcharge)
                 
-
 
 
     def CalcWaveformOnChannel(self, strip_x, strip_y, strip_type, deposits):

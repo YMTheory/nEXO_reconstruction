@@ -45,6 +45,7 @@ class generator():
         self.v_drift = 1.74987 # mm/us
         self.sampling_rate = 2.0 # MHz
         self.fAnodeZ = -402.97 #mm
+        self.electron_lifetime = 10000. # us
 
         self.wp_gen = waveform_WP()
         self.wp_gen.initialize()
@@ -54,6 +55,10 @@ class generator():
         self.strip_charge_waveform = None
         self.strip_quantized_current_time = None
         self.strip_quantized_current_waveform = None
+
+
+    def electron_attenuation(self, t):
+        return np.exp(-t/self.electron_lifetime)
 
     def diffusion_PDF(self, X0, X): 
         '''
@@ -73,18 +78,21 @@ class generator():
         
         
     def diffused_point_charges(self):
+        tc = np.abs(self.fAnodeZ - self.z0) / self.v_drift
         v_grid = (self.charge_cubic_L/self.n_step_L)**2 * (self.charge_cubic_H / self.n_step_H)
         for i, xc in tqdm(enumerate(np.linspace(-self.charge_cubic_L/2.+self.x0, self.charge_cubic_L/2.+self.x0, self.n_step_L))):
             for j, yc in enumerate(np.linspace(-self.charge_cubic_L/2.+self.y0, self.charge_cubic_L/2.+self.y0, self.n_step_L)):
                 for k, zc in enumerate(np.linspace(-self.charge_cubic_H/2.+self.fAnodeZ, self.charge_cubic_H/2.+self.fAnodeZ, self.n_step_H)):
-                    tc = np.abs(self.fAnodeZ - self.z0) / self.v_drift
+                    tc = np.abs(self.fAnodeZ-self.z0) / self.v_drift
                     X0, X = (self.x0, self.y0, self.z0, 0), (xc, yc, zc, tc)
-                    prob_grid = self.diffusion_PDF(X0, X) 
+                    # Consider electron attentuation during drift
+                    prob_grid = self.diffusion_PDF(X0, X)  * self.electron_attenuation(tc)
                     self.q_cubic[i, j, k] = prob_grid * self.q0 * v_grid
                     
         # normalization
         self.q_cubic = self.q_cubic * (self.q0 / np.sum(self.q_cubic))
         print(f"-> Smearing charge density in three-dimension: sigma_xy = {self.DL} mm2/us and sigma_z = {self.DT} mm2/us.")
+        print(f'-> Drift distance for this event is {self.fAnodeZ-self.z0} mm and drift time is {tc} us.')
 
     def induced_currentWF_onStrip(self, strip_x, strip_y, IsAXstrip=True):
         minZ, maxZ = self.z0 - self.charge_cubic_H/2., self.z0 + self.charge_cubic_H/2.

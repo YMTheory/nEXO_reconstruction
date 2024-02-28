@@ -1,1 +1,1 @@
-run_env = "LOCAL" # or "IHEP"
+run_env = "IHEP" # "LOCAL "or "IHEP" or "LLNL" or "SLAC"

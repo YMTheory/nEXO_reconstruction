@@ -40,9 +40,9 @@ class generator():
         self.n_step_H = int(self.charge_cubic_H/z_step)
         self.q_cubic = np.zeros((self.n_step_L, self.n_step_L, self.n_step_H))
         
-        self.DT = 53.*100/1e6 # mm2/us
-        self.DL = 24.8*100/1e6 #mm2/us
-        self.v_drift = 1.70 # mm/us
+        self.DT = 53.1172*100/1e6 # mm2/us
+        self.DL = 24.78*100/1e6 #mm2/us
+        self.v_drift = 1.74987 # mm/us
         self.sampling_rate = 2.0 # MHz
         self.fAnodeZ = -402.97 #mm
 

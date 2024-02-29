@@ -25,7 +25,7 @@ else:
 
 class generator():
     
-    def __init__(self, x0=0., y0=0., z0=-1022., q0=1e5, xy_step=1., z_step=1.) -> None:
+    def __init__(self, x0=0., y0=0., z0=-1022., q0=1e5, xy_step=1., z_step=1., charge_cubic_L=10., charge_cubic_H=6.) -> None:
         self.digi = digitization(SamplingFrequency=2.0)
         
         self.x0 = x0
@@ -34,8 +34,8 @@ class generator():
         self.q0 = q0
         self.t0 = 0.
         
-        self.charge_cubic_L = 10.0 #mm
-        self.charge_cubic_H = 6.0  #mm
+        self.charge_cubic_L = charge_cubic_L #mm
+        self.charge_cubic_H = charge_cubic_H  #mm
         self.n_step_L = int(self.charge_cubic_L/xy_step)
         self.n_step_H = int(self.charge_cubic_H/z_step)
         self.q_cubic = np.zeros((self.n_step_L, self.n_step_L, self.n_step_H))
@@ -93,6 +93,7 @@ class generator():
         self.q_cubic = self.q_cubic * (self.q0 / np.sum(self.q_cubic))
         print(f"-> Smearing charge density in three-dimension: sigma_xy = {self.DL} mm2/us and sigma_z = {self.DT} mm2/us.")
         print(f'-> Drift distance for this event is {self.fAnodeZ-self.z0} mm and drift time is {tc} us.')
+
 
     def induced_currentWF_onStrip(self, strip_x, strip_y, IsAXstrip=True):
         minZ, maxZ = self.z0 - self.charge_cubic_H/2., self.z0 + self.charge_cubic_H/2.

@@ -3,10 +3,13 @@ import ROOT
 from array import array
 
 from scripts.nEXOFieldWP import nEXOFieldWP
+from scripts.toy_digitization import digitization
 
 class waveform_WP:
     
     def __init__(self):
+        self.digi = digitization(SamplingFrequency=2.0)
+        
         self.wp = nEXOFieldWP()
         self.fSamplingSeqZ = []
         self.fZSeqTemplate = None
@@ -21,6 +24,8 @@ class waveform_WP:
         self.onechannel_wf = None
         self.onechannel_time_pointcharge = None
         self.onechannel_wf_pointcharge = None
+        self.onechannel_curtime_pointcharge = None
+        self.onechannel_curwf_pointcharge = None
         self.strip_NTE = 0.
         self.strip_Qion = 0.
 
@@ -240,4 +245,10 @@ class waveform_WP:
         self.onechannel_time.append(lasttime)
         self.onechannel_wf.append(NTE-totalIonQ)
         self.onechannel_wf.append(NTE-totalIonQ)
+        
+    def quantize_pointCharge_waveform(self):
+        self.digi.convolve_asic_response(self.onechannel_time_pointcharge, self.onechannel_wf_pointcharge)
+        self.digi.quantization_trueWF(self.digi.cryoAmp, 40000.)
+        self.onechannel_curwf_pointcharge = self.digi.fTruth
+        self.onechannel_curtime_pointcharge = np.arange(0, len(self.onechannel_curwf_pointcharge), 1) * 0.5
         

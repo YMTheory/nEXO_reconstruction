@@ -484,7 +484,7 @@ class event_builder():
         plt.tight_layout()
         
 
-    def _plot_channel_waveforms(self, noise=True):
+    def _plot_channel_waveforms(self, noise=True, xmin=300, xmax=400):
         n_chanenls = len(self.wf_all)
         nrow = int(n_chanenls/5) + 1
         
@@ -499,7 +499,7 @@ class event_builder():
             ax[irow, icol].legend(fontsize=10)
             type = 'Y' if self.ystrip_flag_all[i] else 'X'
             ax[irow, icol].set_title(f'{type}-strip @({self.strip_x_all[i]+self.dx}, {self.strip_y_all[i]+self.dy})', fontsize=12)
-            ax[irow, icol].set_xlim(300, 400)
+            ax[irow, icol].set_xlim(xmin, xmax)
         plt.tight_layout()
         
         return fig

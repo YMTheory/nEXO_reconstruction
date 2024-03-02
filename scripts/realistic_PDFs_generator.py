@@ -5,6 +5,7 @@ import numpy as np
 from scripts.SignalCalculator import SignalCalculator
 from scripts.toy_digitization import digitization
 from scripts.waveform_WP import waveform_WP
+from scripts.nEXOGroupPCDs import grouper
 
 from IPython import get_ipython
 def isnotebook():
@@ -39,6 +40,11 @@ class generator():
         self.n_step_L = int(self.charge_cubic_L/xy_step)
         self.n_step_H = int(self.charge_cubic_H/z_step)
         self.q_cubic = np.zeros((self.n_step_L, self.n_step_L, self.n_step_H))
+
+        self.grid_x = []
+        self.grid_y = []
+        self.grid_z = []
+        self.grid_q = []
         
         self.DT = 53.1172*100/1e6 # mm2/us
         self.DL = 24.78*100/1e6 #mm2/us
@@ -56,6 +62,8 @@ class generator():
         self.strip_quantized_current_time = None
         self.strip_quantized_current_waveform = None
 
+        self.group = grouper()
+        self.fPCDMaps = None
 
     def electron_attenuation(self, t):
         return np.exp(-t/self.electron_lifetime)
@@ -83,16 +91,59 @@ class generator():
         for i, xc in tqdm(enumerate(np.linspace(-self.charge_cubic_L/2.+self.x0, self.charge_cubic_L/2.+self.x0, self.n_step_L))):
             for j, yc in enumerate(np.linspace(-self.charge_cubic_L/2.+self.y0, self.charge_cubic_L/2.+self.y0, self.n_step_L)):
                 for k, zc in enumerate(np.linspace(-self.charge_cubic_H/2.+self.fAnodeZ, self.charge_cubic_H/2.+self.fAnodeZ, self.n_step_H)):
+                    self.grid_x.append(xc)
+                    self.grid_y.append(yc)
+                    self.grid_z.append(zc-self.fAnodeZ+self.z0)
                     tc = np.abs(self.fAnodeZ-self.z0) / self.v_drift
                     X0, X = (self.x0, self.y0, self.z0, 0), (xc, yc, zc, tc)
                     # Consider electron attentuation during drift
                     prob_grid = self.diffusion_PDF(X0, X)  * self.electron_attenuation(tc)
                     self.q_cubic[i, j, k] = prob_grid * self.q0 * v_grid
+                    self.grid_q.append(prob_grid * self.q0 * v_grid)
                     
         # normalization
         self.q_cubic = self.q_cubic * (self.q0 / np.sum(self.q_cubic))
         print(f"-> Smearing charge density in three-dimension: sigma_xy = {self.DL} mm2/us and sigma_z = {self.DT} mm2/us.")
         print(f'-> Drift distance for this event is {self.fAnodeZ-self.z0} mm and drift time is {tc} us.')
+
+    def induced_chargeWF_onStrip_byPCDs(self, strip_x, strip_y, IsAXstrip=True):
+        minZ, maxZ = self.z0 - self.charge_cubic_H/2., self.z0 + self.charge_cubic_H/2.
+        self.wp_gen.DetermineSamplingSequence(maxZ, minZ)
+        
+        self.diffused_point_charges()
+        self.GroupDiffusionInPCDs()
+        
+        if not self.fPCDMaps:
+            print('Error: No PCDs have been grouped for now.')
+            return
+        
+        induced_time_onStrip = []
+        induced_chargeWF_onStrip = []
+        
+        for k, v in self.fPCDMaps.items():
+            pcdx, pcdy, pcdz, _ = k.GetCenter()
+            z = self.fAnodeZ - pcdz
+            pcdq = v
+            dX, dY = strip_x - pcdx, strip_y - pcdy
+            if not IsAXstrip:
+                dX, dY = strip_y - pcdy, strip_x - pcdx
+            dX, dY = np.abs(dX), np.abs(dY)
+            self.wp_gen.CalcPointChargeWaveformOnChannel(dX, dY, z, pcdq)
+            induced_time_onStrip_onePCD     = self.wp_gen.onechannel_time_pointcharge
+            induced_chargeWF_onStrip_onePCD = self.wp_gen.onechannel_wf_pointcharge
+            if len(induced_chargeWF_onStrip_onePCD) == 0:
+                continue
+            else:
+                induced_time_onStrip = induced_time_onStrip_onePCD
+                if len(induced_chargeWF_onStrip) == 0:
+                    induced_chargeWF_onStrip = np.array(induced_chargeWF_onStrip_onePCD)
+                else:
+                    induced_chargeWF_onStrip += np.array(induced_chargeWF_onStrip_onePCD)
+        
+        self.strip_charge_time = np.array(induced_time_onStrip)
+        self.strip_charge_waveform = np.array(induced_chargeWF_onStrip)
+                    
+                
 
 
     def induced_currentWF_onStrip(self, strip_x, strip_y, IsAXstrip=True):
@@ -141,3 +192,11 @@ class generator():
         self.digi.quantization_trueWF(self.digi.cryoAmp, 40000.)
         self.strip_quantized_current_waveform = self.digi.fTruth
         self.strip_quantized_current_time = np.arange(0, len(self.strip_quantized_current_waveform), 1) * 0.5
+
+    
+
+    def GroupDiffusionInPCDs(self):
+        self.group.generatePCDs(self.grid_x, self.grid_y, self.grid_z, self.grid_q)
+        self.fPCDMaps = self.group.fPCDMaps
+        
+        

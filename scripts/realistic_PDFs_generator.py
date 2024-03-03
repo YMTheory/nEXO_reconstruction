@@ -26,7 +26,7 @@ else:
 
 class generator():
     
-    def __init__(self, x0=0., y0=0., z0=-1022., q0=1e5, xy_step=0.5, z_step=0.5, charge_cubic_L=10., charge_cubic_H=6.) -> None:
+    def __init__(self, x0=0., y0=0., z0=-1022., q0=1e5, xy_step=0.5, z_step=0.5, charge_cubic_L=20., charge_cubic_H=20.) -> None:
         self.digi = digitization(SamplingFrequency=2.0)
         
         self.x0 = x0

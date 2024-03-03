@@ -35,6 +35,8 @@ class generator():
         self.q0 = q0
         self.t0 = 0.
         
+        self.xy_step = xy_step
+        self.z_step = z_step
         self.charge_cubic_L = charge_cubic_L #mm
         self.charge_cubic_H = charge_cubic_H  #mm
         self.n_step_L = int(self.charge_cubic_L/xy_step)
@@ -68,26 +70,42 @@ class generator():
     def electron_attenuation(self, t):
         return np.exp(-t/self.electron_lifetime)
 
-    def diffusion_PDF(self, X0, X): 
+    def diffusion_PDF(self, X0, X, td): 
         '''
         From zepeng's paper, for N electrons generated at position X0=(x0, y0, z0) at time t0, the electron distribution at X=(x, y, z) and time t is described by a 3-dimensional diffusion equation:
         n(X, t)= N / (8*D_T*sqrt(D_L)[pi*(t-t0)]^{3/2}) * exp{[-(x-x0)^2-(y-y0)^2]/[4*D_T*(t-t0)]} * exp{[-( (z-z0)-v_d(t-t0) )^2]/[4*D_L*(t-t0)]}
         The charge is set as 1 here.
         '''
 
-        x0, y0, z0, t0 = X0
-        x, y, z, t = X
-        f0 = 1. / (8*self.DT*np.sqrt(self.DL) * (np.pi*np.power((t-t0), 1.5)) ) 
-        f1 = np.exp(-((x-x0)**2+(y-y0)**2)/(4*self.DT*(t-t0)))
-        f2 = np.exp(-(np.abs(z-z0)-self.v_drift*(t-t0))**2/(4*self.DL*(t-t0)))
-        prob = f0 * f1 * f2
+        # The total probability is 1.58 not 1???
+        #x0, y0, z0, t0 = X0
+        #x, y, z, t = X
+        #f0 = 1. / (8*self.DT*np.sqrt(self.DL) * (np.pi*np.power((t-t0), 1.5)) ) 
+        #f1 = np.exp(-((x-x0)**2+(y-y0)**2)/(4*self.DT*(t-t0)))
+        #f2 = np.exp(-(np.abs(z-z0)-self.v_drift*(t-t0))**2/(4*self.DL*(t-t0)))
+        #prob = f0 * f1 * f2
         
-        return prob
+        #return prob
+        
+        '''
+        Using standard 3D normal distribution formula instead:
+        '''
+        sigma_x = np.sqrt(2 * self.DT * td)
+        sigma_y = np.sqrt(2 * self.DT * td)
+        sigma_z = np.sqrt(2 * self.DL * td)
+        
+        f0 = 1./ (np.power(2*np.pi, 1.5) * sigma_x * sigma_y * sigma_z)
+        f1 = (X[0] - X0[0])**2 / sigma_x**2
+        f2 = (X[1] - X0[1])**2 / sigma_y**2
+        f3 = (X[2] - X0[2])**2 / sigma_z**2
+        f4 = f0 * np.exp(-0.5 * (f1+f2+f3))
+        return f4
         
         
     def diffused_point_charges(self):
+        tot_prob = 0.
         tc = np.abs(self.fAnodeZ - self.z0) / self.v_drift
-        v_grid = (self.charge_cubic_L/self.n_step_L)**2 * (self.charge_cubic_H / self.n_step_H)
+        v_grid = self.xy_step * self.xy_step * self.z_step
         for i, xc in tqdm(enumerate(np.linspace(-self.charge_cubic_L/2.+self.x0, self.charge_cubic_L/2.+self.x0, self.n_step_L))):
             for j, yc in enumerate(np.linspace(-self.charge_cubic_L/2.+self.y0, self.charge_cubic_L/2.+self.y0, self.n_step_L)):
                 for k, zc in enumerate(np.linspace(-self.charge_cubic_H/2.+self.fAnodeZ, self.charge_cubic_H/2.+self.fAnodeZ, self.n_step_H)):
@@ -95,16 +113,23 @@ class generator():
                     self.grid_y.append(yc)
                     self.grid_z.append(zc-self.fAnodeZ+self.z0)
                     tc = np.abs(self.fAnodeZ-self.z0) / self.v_drift
-                    X0, X = (self.x0, self.y0, self.z0, 0), (xc, yc, zc, tc)
+                    ## X0, X = (self.x0, self.y0, self.z0, 0), (xc, yc, zc, tc)
                     # Consider electron attentuation during drift
-                    prob_grid = self.diffusion_PDF(X0, X)  * self.electron_attenuation(tc)
+                    ## prob_grid = self.diffusion_PDF(X0, X)  * self.electron_attenuation(tc)
+                    X0, X = (self.x0, self.y0, self.z0), (xc, yc, self.grid_z[-1])
+                    prob_grid = self.diffusion_PDF(X0, X, tc) * self.electron_attenuation(tc)
+                    
                     self.q_cubic[i, j, k] = prob_grid * self.q0 * v_grid
                     self.grid_q.append(prob_grid * self.q0 * v_grid)
+                    tot_prob = tot_prob + prob_grid * v_grid
                     
         # normalization
         self.q_cubic = self.q_cubic * (self.q0 / np.sum(self.q_cubic))
-        print(f"-> Smearing charge density in three-dimension: sigma_xy = {self.DL} mm2/us and sigma_z = {self.DT} mm2/us.")
+        print(f"-> Smearing charge coefficients in three-dimension: sigma_xy = {self.DL} mm2/us and sigma_z = {self.DT} mm2/us.")
         print(f'-> Drift distance for this event is {self.fAnodeZ-self.z0} mm and drift time is {tc} us.')
+        print(f'---> which gives a spatial smearing of {np.sqrt(2*self.DT*tc):.2f} (xy plane) and {np.sqrt(2*self.DL*tc):.2f} z-direction.')
+        print(f'-> Attenuation coefficient is {self.electron_attenuation(tc)}.')
+        print(f'-> Check total probability: {tot_prob}.')
 
     def induced_chargeWF_onStrip_byPCDs(self, strip_x, strip_y, IsAXstrip=True):
         minZ, maxZ = self.z0 - self.charge_cubic_H/2., self.z0 + self.charge_cubic_H/2.
@@ -196,6 +221,7 @@ class generator():
     
 
     def GroupDiffusionInPCDs(self):
+        print(f'Before PCD grouping, total charge is {np.sum(self.grid_q)}.')
         self.group.generatePCDs(self.grid_x, self.grid_y, self.grid_z, self.grid_q)
         self.fPCDMaps = self.group.fPCDMaps
         

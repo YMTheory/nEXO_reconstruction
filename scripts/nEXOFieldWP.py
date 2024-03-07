@@ -15,7 +15,7 @@ class nEXOFieldWP:
         elif run_env == 'LLNL':
             pass
         elif run_env == "SLAC":
-            pass
+            ymlfile = '/sdf/home/m/miaoyu/Reconstruction/repo/nEXO_reconstruction/scripts/config_SLAC.yml'
         else:
             print(f'Error: wrong run environment configuration {run_env}. ')
         

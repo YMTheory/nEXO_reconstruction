@@ -131,11 +131,20 @@ class generator():
         print(f'-> Attenuation coefficient is {self.electron_attenuation(tc):.3f}.')
         print(f'-> Check total probability: {tot_prob:.3f}.')
 
-    def induced_chargeWF_onStrip_byPCDs(self, strip_x, strip_y, IsAXstrip=True):
+    def InputPCD(self, x, y, z, q):
+        self.grid_x = x
+        self.grid_y = y
+        self.grid_z = z 
+        self.grid_q = q
+        print(f'Total input {len(self.grid_x)} PCDs with total charge {np.sum(self.grid_q)}.')
+
+
+    def induced_chargeWF_onStrip_byPCDs(self, strip_x, strip_y, IsAXstrip=True, inputPCD=False):
         minZ, maxZ = self.z0 - self.charge_cubic_H/2., self.z0 + self.charge_cubic_H/2.
         self.wp_gen.DetermineSamplingSequence(maxZ, minZ)
         
-        self.diffused_point_charges()
+        if not inputPCD:
+            self.diffused_point_charges()
         self.GroupDiffusionInPCDs()
         
         if not self.fPCDMaps:

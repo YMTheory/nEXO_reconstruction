@@ -125,11 +125,11 @@ class generator():
                     
         # normalization
         self.q_cubic = self.q_cubic * (self.q0 / np.sum(self.q_cubic))
-        print(f"-> Smearing charge coefficients in three-dimension: sigma_xy = {self.DL} mm2/us and sigma_z = {self.DT} mm2/us.")
-        print(f'-> Drift distance for this event is {self.fAnodeZ-self.z0} mm and drift time is {tc} us.')
-        print(f'---> which gives a spatial smearing of {np.sqrt(2*self.DT*tc):.2f} (xy plane) and {np.sqrt(2*self.DL*tc):.2f} z-direction.')
-        print(f'-> Attenuation coefficient is {self.electron_attenuation(tc)}.')
-        print(f'-> Check total probability: {tot_prob}.')
+        print(f"-> Smearing charge coefficients in three-dimension: sigma_xy = {self.DL:.6f} mm2/us and sigma_z = {self.DT:.6f} mm2/us.")
+        print(f'-> Drift distance for this event is {self.fAnodeZ-self.z0: .3f} mm and drift time is {tc:.3f} us.')
+        print(f'---> which gives a spatial smearing of {np.sqrt(2*self.DT*tc):.2f} mm (xy plane) and {np.sqrt(2*self.DL*tc):.2f} mm z-direction.')
+        print(f'-> Attenuation coefficient is {self.electron_attenuation(tc):.3f}.')
+        print(f'-> Check total probability: {tot_prob:.3f}.')
 
     def induced_chargeWF_onStrip_byPCDs(self, strip_x, strip_y, IsAXstrip=True):
         minZ, maxZ = self.z0 - self.charge_cubic_H/2., self.z0 + self.charge_cubic_H/2.

@@ -1,0 +1,4 @@
+asic_model_file: /sdf/home/m/miaoyu/Reconstruction/repo/config-data/cryo_asic_model.root
+asic_noise_file: /sdf/home/m/miaoyu/Reconstruction/repo/config-data/noise_lib_1_2_us_100e.root
+asic_noise_psd_file: /sdf/home/m/miaoyu/Reconstruction/repo/config-data/noise_unshape.root
+wp_file: /sdf/home/m/miaoyu/Reconstruction/repo/config-data/singleStripWP6mm_COMSOL.root

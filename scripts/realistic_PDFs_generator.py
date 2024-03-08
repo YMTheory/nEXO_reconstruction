@@ -140,8 +140,9 @@ class generator():
 
 
     def induced_chargeWF_onStrip_byPCDs(self, strip_x, strip_y, IsAXstrip=True, inputPCD=False):
-        minZ, maxZ = self.z0 - self.charge_cubic_H/2., self.z0 + self.charge_cubic_H/2.
-        self.wp_gen.DetermineSamplingSequence(maxZ, minZ)
+        if not self.wp_gen.set_SamplingZSeq:
+            minZ, maxZ = self.z0 - self.charge_cubic_H/2., self.z0 + self.charge_cubic_H/2.
+            self.wp_gen.DetermineSamplingSequence(maxZ, minZ)
         
         if not inputPCD:
             self.diffused_point_charges()

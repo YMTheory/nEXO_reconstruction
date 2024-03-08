@@ -155,6 +155,9 @@ class generator():
         induced_chargeWF_onStrip = []
         
         for k, v in self.fPCDMaps.items():
+            if not inputPCD: # If we do diffusion by ourselves, current simplification is skip PCDs with too small charges (hard-coded now).
+                if v < self.q0/1000.:
+                    continue
             pcdx, pcdy, pcdz, _ = k.GetCenter()
             z = self.fAnodeZ - pcdz
             pcdq = v

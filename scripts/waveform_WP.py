@@ -128,6 +128,20 @@ class waveform_WP:
         else:   
             return False 
         
+
+    def InterpolateWaveform(self, dX, dY, z):
+        amplitude = 0.
+        if z >= 0.05:
+            amplitude = self.wp.interpolate(z)
+        elif 0.0 < z < 0.05:
+            amplitude = self.wp.interpolate(0.05)
+        else:
+            if self.IsPointChargeOnStrip(dX, dY):
+                amplitude = 1e5
+            else:
+                amplitude = 0.
+        return amplitude
+        
         
             
     def CalcPointChargeWaveformOnChannel(self, dX, dY, iniZ, Q):
@@ -151,18 +165,8 @@ class waveform_WP:
             NTE = Q
         for j in range(len(self.fSamplingSeqZ)):
             deltaZ = self.fSamplingSeqZ[j]
-            amplitude = 0.
-            if iniZ-deltaZ >= 0.05:
-                amplitude = self.wp.interpolate( iniZ - deltaZ)
-            elif 0.0 < iniZ-deltaZ < 0.05:
-                amplitude = self.wp.interpolate(0.05)
-            else:
-                #if (dY < 48. and dX < HalfPadSize and (dy_a < (HalfPadSize - dx_a) or (dy_a > (HalfPadSize + dx_a)))):
-                if self.IsPointChargeOnStrip(dX, dY):
-                    #print(iniZ, iniZ-deltaZ, dX, dY, amplitude)
-                    amplitude = 1e5
-                else:
-                    amplitude = 0.0
+            zj = iniZ - deltaZ
+            amplitude = self.InterpolateWaveform(dX, dY, zj)
             wf[j] = (amplitude - qIon)/1e5 * Q
 
         self.onechannel_time_pointcharge, self.onechannel_wf_pointcharge = [], []

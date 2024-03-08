@@ -29,6 +29,8 @@ class waveform_WP:
         self.strip_NTE = 0.
         self.strip_Qion = 0.
 
+        self.set_SamplingZSeq = False
+
     def initialize(self):
         self.wp._load_axes()
         self.initialize_ZSeq()
@@ -82,7 +84,7 @@ class waveform_WP:
         for zelem in Zseq:
             self.fPCDZ.Fill(zelem)
 
-    
+        
     
     def DetermineSamplingSequence(self, maxZ, minZ):
         # minZ < maxZ > fAnodeZ
@@ -115,6 +117,12 @@ class waveform_WP:
 
         print(f'Diffused charges distribute between {minZ} to {maxZ} with {len(self.fSamplingSeqZ)} sampling points.')
 
+
+    def initialize_samplingZSeq(self, samplingSeqZ):
+        self.fSamplingSeqZ = samplingSeqZ
+        self.set_SamplingZSeq = True
+
+    
         
     def IsPointChargeOnStrip(self, dX, dY, IsXStrip=True):
         PadSize = 6.0

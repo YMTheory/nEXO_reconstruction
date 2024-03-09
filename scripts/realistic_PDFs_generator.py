@@ -165,7 +165,7 @@ class generator():
             dX, dY = strip_x - pcdx, strip_y - pcdy
             if not IsAXstrip:
                 dX, dY = strip_y - pcdy, strip_x - pcdx
-            dX, dY = np.abs(dX), np.abs(dY)
+            dX, dY = round(np.abs(dX), 1), round(np.abs(dY), 1)
             self.wp_gen.CalcPointChargeWaveformOnChannel(dX, dY, z, pcdq)
             induced_time_onStrip_onePCD     = self.wp_gen.onechannel_time_pointcharge
             induced_chargeWF_onStrip_onePCD = self.wp_gen.onechannel_wf_pointcharge

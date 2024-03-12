@@ -9,6 +9,7 @@ class loader():
         self.load_PDF_flag      = False
         self.pdf_length         = 0
         self.gridPDFs_time      = None
+        self.pcdPDFs_time       = None
 
         self.load_mode = mode
         
@@ -41,8 +42,8 @@ class loader():
     
     def load_diffusedPCD_PDFs(self):
         self.pcd_diffused_PDFs = {}
-        for x in np.arange(0, 3.5, 0.5):
-            for y in np.arange(0, 3.5, 0.5):
+        for x in np.arange(0, 6.5, 0.5):
+            for y in np.arange(0, 6.5, 0.5):
                 filename = f'/Users/yumiao/Documents/Works/0nbb/nEXO/Reconstruction/waveform/nEXO_reconstruction/diffPDFs/z-622mm/stencilPDF_xstripx{x:.1f}y{y:.1f}.npz'
                 if not os.path.exists(filename):
                     print(f'Error: {filename} does not exists!' )
@@ -72,11 +73,14 @@ class loader():
                 self.load_diffusedPCD_PDFs()
             else:
                 print(f'Error: unknown load mode {self.load_mode}!')
+
+        else:
+            print('The diffusion PDFs have already been pre-loaded!')
             
-        xmin, xmax, ymin, ymax = -3.0, 3.0, -3.0, 3.0
+        xmin, xmax, ymin, ymax = -6.0, 6.0, -6.0, 6.0
         if dX < xmin or dX > xmax or dY < ymin or dY > ymax:
             print(f'Error: dX or dY out of range! ({dX}, {dY})')
-            return np.zeros((self.pdf_length, 2))
+            return np.zeros(self.pdf_length)
         else:
             step = 0.5
             x_left = int(np.abs(dX) / step) * step
@@ -87,28 +91,37 @@ class loader():
             name01 = f'dx{x_left:.1f}dy{y_up:.1f}'
             name10 = f'dx{x_right:.1f}dy{y_down:.1f}'
             name11 = f'dx{x_right:.1f}dy{y_up:.1f}'
-
+            
             if name00 not in self.pcd_diffused_PDFs :
                 print(f'Error: {name00} not in the pre-loaded dictionary.')
+                return np.zeros(self.pdf_length)
             else:
                 f00 = self.pcd_diffused_PDFs[name00]['wf']
             if name01 not in self.pcd_diffused_PDFs :
                 print(f'Error: {name01} not in the pre-loaded dictionary.')
+                return np.zeros(self.pdf_length)
             else:
                 f01 = self.pcd_diffused_PDFs[name01]['wf']
             if name10 not in self.pcd_diffused_PDFs :
                 print(f'Error: {name10} not in the pre-loaded dictionary.')
+                return np.zeros(self.pdf_length)
             else:
                 f10 = self.pcd_diffused_PDFs[name10]['wf']
             if name11 not in self.pcd_diffused_PDFs :
                 print(f'Error: {name11} not in the pre-loaded dictionary.')
+                return np.zeros(self.pdf_length)
             else:
+                self.pcdPDFs_time = self.pcd_diffused_PDFs[name11]['time']
                 f11 = self.pcd_diffused_PDFs[name11]['wf']
-
 
             Xs = np.array([x_left, x_left, x_right, x_right])
             Ys = np.array([y_down, y_up, y_down, y_up])
             Zs = np.array([f00, f01, f10, f11])
-            f = griddata((Xs, Ys), Zs, (dX, dY), method='linear')
+            f = griddata((Xs, Ys), Zs, (np.abs(dX), np.abs(dY)), method='linear')
             
             return f
+
+            
+    def diffused_waveform_oneChannel(self, dX, dY, t):
+        f = self.interpolate(dX, dY)
+        return np.interp(t, self.pcdPDFs_time, f)

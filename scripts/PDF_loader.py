@@ -1,12 +1,16 @@
 import numpy as np
 import os
+from scipy.interpolate import griddata
 
 class loader():
-    def __init__(self):
+    def __init__(self, mode='PCD'):
         self.grid_diffused_PDFs = None
+        self.pcd_diffused_PDFs  = None
         self.load_PDF_flag      = False
         self.pdf_length         = 0
         self.gridPDFs_time      = None
+
+        self.load_mode = mode
         
     def load_diffused_PDFs(self):
         self.grid_diffused_PDFs = {} # dictionary to store the diffused PDFs.
@@ -34,15 +38,77 @@ class loader():
         self.load_PDF_flag = True
         print('The diffusion PDFs loaded successfully!')
 
+    
+    def load_diffusedPCD_PDFs(self):
+        self.pcd_diffused_PDFs = {}
+        for x in np.arange(0, 3.5, 0.5):
+            for y in np.arange(0, 3.5, 0.5):
+                filename = f'/Users/yumiao/Documents/Works/0nbb/nEXO/Reconstruction/waveform/nEXO_reconstruction/diffPDFs/z-622mm/stencilPDF_xstripx{x:.1f}y{y:.1f}.npz'
+                if not os.path.exists(filename):
+                    print(f'Error: {filename} does not exists!' )
+                    continue
+                else:
+                    arr = np.load(filename)
+                    dict_name = f'dx{x:.1f}dy{y:.1f}'
+                    self.pcd_diffused_PDFs[dict_name] = arr
+                    self.pdf_length = len(arr['time'])
+        self.load_PDF_flag = True
+        print('The diffusion PCD PDFs loaded successfully!')
+    
+    def get_one_stencil(self, name, t0):
+        if name not in self.pcd_diffused_PDFs:
+            print(f'Error: {name} not in the pre-loaded dictionary.')
+            return 0.
+        else:
+            t, wf = self.pcd_diffused_PDFs[name]['time'], self.pcd_diffused_PDFs[name]['wf']
+            return np.interp(t0, t, wf)
         
         
     def interpolate(self, dX, dY):
         if not self.load_PDF_flag:
-            self.load_diffused_PDFs()
+            if self.load_mode == 'grid':
+                self.load_diffused_PDFs()
+            elif self.load_mode == 'PCD':
+                self.load_diffusedPCD_PDFs()
+            else:
+                print(f'Error: unknown load mode {self.load_mode}!')
             
-        # In my current pre-calculated PDFs, there are 16 whole pads on one strips:
-        # [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15]
-        # and the center of the strip is located at the corner between pad7 and pad8.
-        # There is a discrepancy between this structure and the real one updated in the offline by me.
-        # We shall investigate it later if there is any large influence on this.
-        
+        xmin, xmax, ymin, ymax = -3.0, 3.0, -3.0, 3.0
+        if dX < xmin or dX > xmax or dY < ymin or dY > ymax:
+            print(f'Error: dX or dY out of range! ({dX}, {dY})')
+            return np.zeros((self.pdf_length, 2))
+        else:
+            step = 0.5
+            x_left = int(np.abs(dX) / step) * step
+            x_right = x_left + step
+            y_down = int(np.abs(dY) / step) * step
+            y_up = y_down + step
+            name00 = f'dx{x_left:.1f}dy{y_down:.1f}'
+            name01 = f'dx{x_left:.1f}dy{y_up:.1f}'
+            name10 = f'dx{x_right:.1f}dy{y_down:.1f}'
+            name11 = f'dx{x_right:.1f}dy{y_up:.1f}'
+
+            if name00 not in self.pcd_diffused_PDFs :
+                print(f'Error: {name00} not in the pre-loaded dictionary.')
+            else:
+                f00 = self.pcd_diffused_PDFs[name00]['wf']
+            if name01 not in self.pcd_diffused_PDFs :
+                print(f'Error: {name01} not in the pre-loaded dictionary.')
+            else:
+                f01 = self.pcd_diffused_PDFs[name01]['wf']
+            if name10 not in self.pcd_diffused_PDFs :
+                print(f'Error: {name10} not in the pre-loaded dictionary.')
+            else:
+                f10 = self.pcd_diffused_PDFs[name10]['wf']
+            if name11 not in self.pcd_diffused_PDFs :
+                print(f'Error: {name11} not in the pre-loaded dictionary.')
+            else:
+                f11 = self.pcd_diffused_PDFs[name11]['wf']
+
+
+            Xs = np.array([x_left, x_left, x_right, x_right])
+            Ys = np.array([y_down, y_up, y_down, y_up])
+            Zs = np.array([f00, f01, f10, f11])
+            f = griddata((Xs, Ys), Zs, (dX, dY), method='linear')
+            
+            return f

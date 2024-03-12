@@ -63,6 +63,8 @@ class generator():
         self.strip_charge_waveform = None
         self.strip_quantized_current_time = None
         self.strip_quantized_current_waveform = None
+        self.strip_collect_NTE = 0.
+        self.strip_totalQion = 0.
 
         self.group = grouper()
         self.fPCDMaps = None
@@ -169,6 +171,8 @@ class generator():
             self.wp_gen.CalcPointChargeWaveformOnChannel(dX, dY, z, pcdq)
             induced_time_onStrip_onePCD     = self.wp_gen.onechannel_time_pointcharge
             induced_chargeWF_onStrip_onePCD = self.wp_gen.onechannel_wf_pointcharge
+            self.strip_collect_NTE += self.wp_gen.strip_NTE
+            self.strip_totalQion += self.wp_gen.strip_Qion
             if len(induced_chargeWF_onStrip_onePCD) == 0:
                 continue
             else:

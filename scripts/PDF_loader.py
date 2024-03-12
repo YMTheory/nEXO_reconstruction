@@ -3,7 +3,13 @@ import os
 from scipy.interpolate import griddata
 
 class loader():
-    def __init__(self, mode='PCD'):
+    def __init__(self, mode='PCD', charge_x=0.0, charge_y=0.0, charge_z=-622.0, charge_q=1.0e5):
+        
+        self.charge_x           = charge_x
+        self.charge_y           = charge_y 
+        self.charge_z           = charge_z
+        self.charge_q           = charge_q
+        
         self.grid_diffused_PDFs = None
         self.pcd_diffused_PDFs  = None
         self.load_PDF_flag      = False
@@ -122,6 +128,10 @@ class loader():
             return f
 
             
-    def diffused_waveform_oneChannel(self, dX, dY, t):
+    def diffused_waveform_oneChannel(self, strip_x, strip_y, IsAXstrip, t):
+        dX, dY = strip_x - self.charge_x, strip_y - self.charge_y
+        if not IsAXstrip:
+            dY, dX = strip_x - self.charge_x, strip_y - self.charge_y
+
         f = self.interpolate(dX, dY)
         return np.interp(t, self.pcdPDFs_time, f)

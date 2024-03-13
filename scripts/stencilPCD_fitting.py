@@ -11,17 +11,12 @@ from scripts.nEXO_event_processing import event_builder
 
 class pcd_fitter():
     
-    def __init__(self, charge_x=0.0, charge_y=0.0, charge_z=-622.0, charge_q=1e5):
+    def __init__(self):
 
         self.SamplingInterval               = 0.5 # us
 
-        self.charge_x                       = charge_x  
-        self.charge_y                       = charge_y  
-        self.charge_z                       = charge_z  
-        self.charge_q                       = charge_q  
-        
         self.builder    = event_builder()
-        self.load       = loader(charge_x=charge_x, charge_y=charge_y, charge_z=charge_z, charge_q=charge_q)
+        self.load       = loader()
 
         self.offline_simulation_filename    = None
         self.event_id                       = 0
@@ -29,7 +24,7 @@ class pcd_fitter():
         self.waveform_array                 = None
         self.strip_x_array                  = None
         self.strip_y_array                  = None
-        self.strip_type_array               = None 
+        self.strip_type_array               = None  # Array later, True for x-strip, False for y-strip.
         self.strip_charge_array             = None  
         self.total_charge_truth             = 0.0
         
@@ -58,9 +53,13 @@ class pcd_fitter():
     # Setters
     def _set_offline_filename(self, filename):
         self.offline_simulation_filename = filename
+        self.builder.set_filename(filename)
         
     def _set_event_id(self, event_id):
         self.event_id = event_id
+        
+    def _set_loading_nevents(self, nevents):
+        self.builder.set_load_nentries(nevents)
         
     def _set_fit_channels(self, channels_id):
         self.fit_channelsId = channels_id
@@ -71,11 +70,32 @@ class pcd_fitter():
         self.fit_tmin = tmin
         self.fit_tmax = tmax
     
+    def _IsMultiSite(self):
+        self.builder.get_mc_event(self.event_id)
+        if self.builder.IsMultiEvent_MCtruth():
+            return True
+        else:
+            return False
     
     def load_one_event(self):
-        self.builder.set_filename(self.offline_simulation_filename)
+        # Build event:
         self.builder.get_mc_event(self.event_id)
         self.builder.group_channels()
+
+        n_build_channel = len(self.builder.selected_all_id)
+
+        # Test channel id:
+        for chaid in self.fit_channelsId:
+            if chaid > n_build_channel:
+                print(f"Error: channel id {chaid} is out of range from event builder!")
+        
+        if len(self.fit_channelsId) == 0:
+            # If no channel is specified, use all channels in the event.
+            self.fit_channelsId = range(n_build_channel)
+            self.fit_nchannels = n_build_channel
+        
+        if n_build_channel != len(self.builder.wf_all):
+            print(f"Channel number mismatch: {n_build_channel} and {len(self.builder.wf_all)}.")
         self.time_array = self.builder.time_all[self.fit_channelsId]
         self.waveform_array = self.builder.wf_all[self.fit_channelsId]
 
@@ -95,7 +115,6 @@ class pcd_fitter():
         self.total_charge_truth = np.sum(self.builder.charge_all)
 
 
-
     def _set_dt_fixed(self, flag):
         self.dt_fixed_flag = flag
         
@@ -112,7 +131,6 @@ class pcd_fitter():
     def _set_dt_range(self, low, high):
         self.dt_range_low = low
         self.dt_range_high = high
-        
         
     def _set_dx_range(self, low, high):
         self.dx_range_low = low 
@@ -132,19 +150,20 @@ class pcd_fitter():
         # For each one PC (point charge), we assign 4 fitting parameters: t0, x0, y0, Q0 (z0 is fixed as the diffusion is correlated with z0)
         
         def create_models(sx, sy, type):
-            # Type: is if a x strip?
-            def one_model(t, t0, x0, y0, Q0):
+            # Type: true for x-strip, false for y-strip.
+            def one_model(t, t0, x0, y0, Q0): # x0, y0, Q0 are the point charge info.
                 dx, dy = sx - x0, sy - y0
+                if not type:
+                    dx, dy = sy-y0, sx-x0
                 fit_time = t+t0
-                fit_wf = self.load.diffused_waveform_oneChannel(dx, dy, type, t+t0) * Q0
-                #return np.interp(t, fit_time, fit_wf)
-                return np.interp(t, t, fit_wf)
+                fit_wf = self.load.diffused_waveform_oneChannel(dx, dy, t) * Q0
+                return np.interp(t, fit_time, fit_wf)
             return one_model
                 
         # Prepare the model list for all channels to be fitter:
         model_list = []
         for i in range(self.fit_nchannels):
-            model_list.append(create_models(self.strip_x_array[i], self.strip_y_array[i], not(self.strip_type_array[i])))
+            model_list.append(create_models(self.strip_x_array[i], self.strip_y_array[i], self.strip_type_array[i]))
         
         least_squares = []
         for icha in range(self.fit_nchannels):
@@ -180,19 +199,20 @@ class pcd_fitter():
         # For each one PC (point charge), we assign 4 fitting parameters: t0, x0, y0, Q0 (z0 is fixed as the diffusion is correlated with z0)
         
         def create_models(sx, sy, type):
-            # Type: is if a x strip?
-            def one_model(t, t0, x0, y0, Q0):
+            # Type: true for x-strip, false for y-strip.
+            def one_model(t, t0, x0, y0, Q0): # x0, y0, Q0 are the point charge info.
                 dx, dy = sx - x0, sy - y0
+                if not type:
+                    dx, dy = sy-y0, sx-x0
                 fit_time = t+t0
-                fit_wf = self.load.diffused_waveform_oneChannel(dx, dy, type, fit_time) * Q0
-                #return np.interp(t, fit_time, fit_wf)
-                return np.interp(t, t, fit_wf)
+                fit_wf = self.load.diffused_waveform_oneChannel(dx, dy, t) * Q0
+                return np.interp(t, fit_time, fit_wf)
             return one_model
                 
         # Prepare the model list for all channels to be fitter:
         model_list = []
         for i in range(self.fit_nchannels):
-            model_list.append(create_models(self.strip_x_array[i], self.strip_y_array[i], not(self.strip_type_array[i])))
+            model_list.append(create_models(self.strip_x_array[i], self.strip_y_array[i], self.strip_type_array[i]))
         
         least_squares = []
         generated_wfs = []

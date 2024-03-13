@@ -48,9 +48,10 @@ class loader():
     
     def load_diffusedPCD_PDFs(self):
         self.pcd_diffused_PDFs = {}
-        for x in np.arange(0, 6.5, 0.5):
-            for y in np.arange(0, 6.5, 0.5):
-                filename = f'/Users/yumiao/Documents/Works/0nbb/nEXO/Reconstruction/waveform/nEXO_reconstruction/diffPDFs/z-622mm/stencilPDF_xstripx{x:.1f}y{y:.1f}.npz'
+        for x in np.arange(0, 15, 0.5):
+            for y in np.arange(0, 15, 0.5):
+                filename = f'/Users/yumiao/Documents/Works/0nbb/nEXO/Reconstruction/waveform/nEXO_reconstruction/diffPDFs/z-622mm_IHEP/stencilPDF_xstripx{x:.1f}y{y:.1f}.npz'
+                #filename = f'/Users/yumiao/Documents/Works/0nbb/nEXO/Reconstruction/waveform/nEXO_reconstruction/diffPDFs/z-622mm/stencilPDF_xstripx{x:.1f}y{y:.1f}.npz'
                 if not os.path.exists(filename):
                     print(f'Error: {filename} does not exists!' )
                     continue
@@ -80,10 +81,10 @@ class loader():
             else:
                 print(f'Error: unknown load mode {self.load_mode}!')
 
-        else:
-            print('The diffusion PDFs have already been pre-loaded!')
+        #else:
+        #    print('The diffusion PDFs have already been pre-loaded!')
             
-        xmin, xmax, ymin, ymax = -6.0, 6.0, -6.0, 6.0
+        xmin, xmax, ymin, ymax = -14.5, 14.5, -14.5, 14.5
         if dX < xmin or dX > xmax or dY < ymin or dY > ymax:
             print(f'Error: dX or dY out of range! ({dX}, {dY})')
             return np.zeros(self.pdf_length)

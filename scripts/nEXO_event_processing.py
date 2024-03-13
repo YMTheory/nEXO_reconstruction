@@ -6,6 +6,8 @@ import uproot as up
 import matplotlib.pyplot as plt
 import pandas as pd
 
+from scipy.spatial.distance import pdist
+
 from scripts.nEXO_loader import loader
 
 #from sklearn.cluster import KMeans
@@ -63,6 +65,22 @@ class event_builder():
     def get_mc_event(self, evtid):
         self.loader._load_event()
         self.mc_event = self.loader._get_one_event(evtid)
+
+    def set_load_nentries(self, nentries):
+        self.loader.load_nentries = nentries
+        
+        
+    def IsMultiEvent_MCtruth(self, cut=6.0):
+        # Use the NEST MC truth to select multi-site events:
+        nest_x, nest_y, = self.mc_event['nest_hitx'], self.mc_event['nest_hity']
+        points = np.column_stack((nest_x, nest_y))
+        distances = pdist(points)
+        max_distance = np.max(distances)
+        
+        if max_distance > cut:
+            return True
+        else:
+            return False
     
 
     def channel_selection(self):

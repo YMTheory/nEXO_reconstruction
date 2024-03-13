@@ -105,6 +105,9 @@ class generator():
         
         
     def diffused_point_charges(self):
+        # Must empty the arrays before generating new ones
+        self.q_cubic = np.zeros((self.n_step_L, self.n_step_L, self.n_step_H))
+        self.grid_x, self.grid_y, self.grid_z, self.grid_q = [], [], [], []
         tot_prob = 0.
         tc = np.abs(self.fAnodeZ - self.z0) / self.v_drift
         v_grid = self.xy_step * self.xy_step * self.z_step

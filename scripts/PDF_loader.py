@@ -3,12 +3,7 @@ import os
 from scipy.interpolate import griddata
 
 class loader():
-    def __init__(self, mode='PCD', charge_x=0.0, charge_y=0.0, charge_z=-622.0, charge_q=1.0e5):
-        
-        self.charge_x           = charge_x
-        self.charge_y           = charge_y 
-        self.charge_z           = charge_z
-        self.charge_q           = charge_q
+    def __init__(self, mode='PCD' ):
         
         self.grid_diffused_PDFs = None
         self.pcd_diffused_PDFs  = None
@@ -48,10 +43,11 @@ class loader():
     
     def load_diffusedPCD_PDFs(self):
         self.pcd_diffused_PDFs = {}
-        for x in np.arange(0, 15, 0.5):
+        for x in np.arange(0, 30, 0.5):
             for y in np.arange(0, 15, 0.5):
-                filename = f'/Users/yumiao/Documents/Works/0nbb/nEXO/Reconstruction/waveform/nEXO_reconstruction/diffPDFs/z-622mm_IHEP/stencilPDF_xstripx{x:.1f}y{y:.1f}.npz'
+                #filename = f'/Users/yumiao/Documents/Works/0nbb/nEXO/Reconstruction/waveform/nEXO_reconstruction/diffPDFs/z-622mm_IHEP/stencilPDF_xstripx{x:.1f}y{y:.1f}.npz'
                 #filename = f'/Users/yumiao/Documents/Works/0nbb/nEXO/Reconstruction/waveform/nEXO_reconstruction/diffPDFs/z-622mm/stencilPDF_xstripx{x:.1f}y{y:.1f}.npz'
+                filename = f'/Users/yumiao/Documents/Works/0nbb/nEXO/Reconstruction/waveform/nEXO_reconstruction/diffPDFs/z-622mm_IHEP_new/stencilPDF_chargex{x:.1f}y{y:.1f}z-622.0_xstripx0.0y0.0.npz'
                 if not os.path.exists(filename):
                     print(f'Error: {filename} does not exists!' )
                     continue
@@ -73,6 +69,10 @@ class loader():
         
         
     def interpolate(self, dX, dY):
+        '''
+        The dX and dY are the relative distance between the point charge center (before diffusion) and the strip center.
+        Here the y-strip should already be rotated to the x direction with the correct rotated dX and dY.
+        '''
         if not self.load_PDF_flag:
             if self.load_mode == 'grid':
                 self.load_diffused_PDFs()
@@ -84,10 +84,33 @@ class loader():
         #else:
         #    print('The diffusion PDFs have already been pre-loaded!')
             
-        xmin, xmax, ymin, ymax = -14.5, 14.5, -14.5, 14.5
-        if dX < xmin or dX > xmax or dY < ymin or dY > ymax:
-            print(f'Error: dX or dY out of range! ({dX}, {dY})')
-            return np.zeros(self.pdf_length)
+        xmin, xmax, ymin, ymax = -29.5, 29.5, -6., 6.
+        PadSize = 6.0
+        nPadHalfStrip = 8
+        
+        if dX < xmin or dX > xmax:
+            # The point charge is too far away from the strip along the x-axis (which is not the alignment direction of the strip), omit the contributions from this charge then.
+            print(f"The point charge is too far away from the strip along the x-axis! ({dX:.2f}, {dY:.2f}) mm.")
+            self.pdf_length = 500.
+            self.pcdPDFs_time = np.arange(0, self.pdf_length, 1)
+            return np.zeros(self.pdf_length) # return a zero waveform, no contributions from this charge on the strip.
+        
+        elif dY < ymin or dY > ymax and np.abs(dY) <= PadSize * nPadHalfStrip:
+            # Taking the symmetry of the strip, assuming the relative position on each pad is the same, the waveform should be the same.
+            dY = dY % PadSize
+            
+        elif np.abs(dY) > PadSize * nPadHalfStrip:
+            print(f"The point charge is out the range along the strip direction! ({dX:.2f}, {dY:.2f}) mm.")
+            # Currently I set them as 0 but it could be incorrect if the charge is still close to the end of the strip.
+            self.pdf_length = 500.
+            self.pcdPDFs_time = np.arange(0, self.pdf_length, 1)
+            return np.zeros(self.pdf_length) # return a zero waveform, no contributions from this charge on the strip.
+        
+        #if dX < xmin or dX > xmax or dY < ymin or dY > ymax:
+        #    print(f'Error: dX or dY out of range! ({dX}, {dY})')
+        #    self.pdf_length = 500.
+        #    self.pcdPDFs_time = np.arange(0, self.pdf_length, 1)
+        #    return np.zeros(self.pdf_length)
         else:
             step = 0.5
             x_left = int(np.abs(dX) / step) * step
@@ -129,10 +152,12 @@ class loader():
             return f
 
             
-    def diffused_waveform_oneChannel(self, strip_x, strip_y, IsAXstrip, t):
-        dX, dY = strip_x - self.charge_x, strip_y - self.charge_y
-        if not IsAXstrip:
-            dY, dX = strip_x - self.charge_x, strip_y - self.charge_y
-
+    def diffused_waveform_oneChannel(self, dX, dY, t):
+        '''
+        The dX and dY are the relative distance between the point charge center (before diffusion) and the strip center.
+        Here the y-strip should already be rotated to the x direction with the correct rotated dX and dY.
+        '''
         f = self.interpolate(dX, dY)
         return np.interp(t, self.pcdPDFs_time, f)
+    
+    

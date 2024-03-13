@@ -133,6 +133,27 @@ class generator():
         print(f'-> Attenuation coefficient is {self.electron_attenuation(tc):.3f}.')
         print(f'-> Check total probability: {tot_prob:.3f}.')
 
+    
+    def collection_charges_onOneChannel(self, strip_x, strip_y, IsAXstrip=True):
+        if not self.fPCDMaps:
+            self.diffused_point_charges()
+            self.GroupDiffusionInPCDs()
+        
+        totQ = 0.
+        strip_Q = 0.
+        collect_nPCD = 0
+        for k, v in self.fPCDMaps.items():
+            pcdx, pcdy, _, _ = k.GetCenter()
+            dX, dY = strip_x - pcdx, strip_y - pcdy
+            #dX, dY = round(np.abs(dX), 1), round(np.abs(dY), 1)
+            totQ += v
+            if self.wp_gen.IsPointChargeOnStrip(dX, dY, IsAXstrip):
+                strip_Q += v
+                collect_nPCD += 1
+                
+        return strip_Q, totQ, collect_nPCD
+        
+
     def InputPCD(self, x, y, z, q):
         self.grid_x = x
         self.grid_y = y

@@ -127,11 +127,13 @@ class waveform_WP:
     def IsPointChargeOnStrip(self, dX, dY, IsXStrip=True):
         PadSize = 6.0
         HalfPadSize = PadSize / 2.0
+        dX, dY = np.abs(dX), np.abs(dY)
         if not IsXStrip:
            dX0, dY0 = dX, dY
            dX, dY = dY0, dX0
         dx_a, dy_a = dX % PadSize, dY % PadSize
-        if dY < 48. and dX < HalfPadSize and ( (dy_a < (HalfPadSize - dx_a)) or (dy_a > (HalfPadSize + dx_a)) ):
+        #if dY < 48. and dX < HalfPadSize and ( (dy_a < (HalfPadSize - dx_a)) or (dy_a > (HalfPadSize + dx_a)) ):
+        if dY < 48. and dX < HalfPadSize and ( (dy_a < (HalfPadSize - dX)) or (dy_a > (HalfPadSize + dX)) ):
             return True
         else:   
             return False 

@@ -49,6 +49,19 @@ class pcd_fitter():
         self.Q_scale_range_low               = 0.5
         self.Q_scale_range_high              = 1.5
 
+    def clean(self):
+        self.time_array                     = None
+        self.waveform_array                 = None
+        self.strip_x_array                  = None
+        self.strip_y_array                  = None
+        self.strip_type_array               = None  # Array later, True for x-strip, False for y-strip.
+        self.strip_charge_array             = None  
+        self.total_charge_truth             = 0.0
+        
+        # Fitting configuration parameters       
+        self.fit_nchannels                  = 0
+        self.fit_channelsId                 = []
+
 
     # Setters
     def _set_offline_filename(self, filename):
@@ -94,8 +107,6 @@ class pcd_fitter():
             self.fit_channelsId = range(n_build_channel)
             self.fit_nchannels = n_build_channel
         
-        if n_build_channel != len(self.builder.wf_all):
-            print(f"Channel number mismatch: {n_build_channel} and {len(self.builder.wf_all)}.")
         self.time_array = self.builder.time_all[self.fit_channelsId]
         self.waveform_array = self.builder.wf_all[self.fit_channelsId]
 

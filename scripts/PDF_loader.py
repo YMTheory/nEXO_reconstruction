@@ -1,7 +1,9 @@
 import numpy as np
 import os
 from scipy.interpolate import griddata
+import yaml
 
+from scripts.globals import run_env
 class loader():
     def __init__(self, mode='PCD' ):
         
@@ -11,6 +13,22 @@ class loader():
         self.pdf_length         = 0
         self.gridPDFs_time      = None
         self.pcdPDFs_time       = None
+        
+        self.path = None
+        if run_env == 'LOCAL':
+            ymlfile = '/Users/yumiao/Documents/Works/0nbb/nEXO/Reconstruction/waveform/nEXO_reconstruction/scripts/config.yml'
+        elif run_env == 'IHEP':
+            ymlfile = '/junofs/users/miaoyu/0nbb/reconstruction/nEXO_reconstruction/scripts/config_IHEP.yml'
+        elif run_env == 'LLNL':
+            pass
+        elif run_env == "SLAC":
+            ymlfile = '/sdf/home/m/miaoyu/Reconstruction/repo/nEXO_reconstruction/scripts/config_SLAC.yml'
+        else:
+            print(f'Error: wrong run environment configuration {run_env}. ')
+        with open(ymlfile, 'r' ) as config_file:
+            
+            filelist = yaml.safe_load(config_file)
+            self.path = filelist['pdf_path']
 
         self.load_mode = mode
         
@@ -47,7 +65,7 @@ class loader():
             for y in np.arange(0, 15, 0.5):
                 #filename = f'/Users/yumiao/Documents/Works/0nbb/nEXO/Reconstruction/waveform/nEXO_reconstruction/diffPDFs/z-622mm_IHEP/stencilPDF_xstripx{x:.1f}y{y:.1f}.npz'
                 #filename = f'/Users/yumiao/Documents/Works/0nbb/nEXO/Reconstruction/waveform/nEXO_reconstruction/diffPDFs/z-622mm/stencilPDF_xstripx{x:.1f}y{y:.1f}.npz'
-                filename = f'/Users/yumiao/Documents/Works/0nbb/nEXO/Reconstruction/waveform/nEXO_reconstruction/diffPDFs/z-622mm_IHEP_new/stencilPDF_chargex{x:.1f}y{y:.1f}z-622.0_xstripx0.0y0.0.npz'
+                filename = f'{self.path}stencilPDF_chargex{x:.1f}y{y:.1f}z-622.0_xstripx0.0y0.0.npz'
                 if not os.path.exists(filename):
                     print(f'Error: {filename} does not exists!' )
                     continue

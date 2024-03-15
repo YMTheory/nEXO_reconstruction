@@ -404,7 +404,7 @@ class event_builder():
                 for i in range(numPads):
                     rectangles.append( plt.Rectangle((x, y+ystart+padSize*i), padSize/np.sqrt(2), padSize/np.sqrt(2), fc=x_clr,ec=(0.,0.,0.,1.),angle=45., alpha=1.0) )
                     plt.gca().add_patch(rectangles[i])
-                plt.plot(x, y, '*', color='brown', markersize=8, alpha=0.5)
+                #plt.plot(x, y, '*', color='brown', markersize=8, alpha=0.5)
 
             else:
                 rectangles = []
@@ -412,7 +412,7 @@ class event_builder():
                 for i in range(numPads):
                     rectangles.append( plt.Rectangle((x+xstart+padSize*i+padSize/2., y-padSize/2.), padSize/np.sqrt(2), padSize/np.sqrt(2), fc=y_clr,ec=(0.,0.,0.,1.),angle=45., alpha=1.0) )
                     plt.gca().add_patch(rectangles[i])
-                plt.plot(x, y, 'd', color='crimson', markersize=8, alpha=0.5)
+                #plt.plot(x, y, 'd', color='crimson', markersize=8, alpha=0.5)
         txmin, txmax, tymin, tymax = 1e5, -1e5, 1e5, -1e5
         for tx, ty in zip(tilex, tiley):
             #tx = tx - self.dx
@@ -446,7 +446,7 @@ class event_builder():
                 for i in range(numPads):
                     rectangles.append( plt.Rectangle((x, y+ystart+padSize*i), padSize/np.sqrt(2), padSize/np.sqrt(2), fc=x_clr,ec=(0.,0.,0.,1.),angle=45., alpha=0.5) )
                     plt.gca().add_patch(rectangles[i])
-                plt.plot(x, y, '*', color='brown', markersize=8, alpha=0.5)
+                #plt.plot(x, y, '*', color='brown', markersize=8, alpha=0.5)
 
             else:
                 rectangles = []
@@ -454,7 +454,7 @@ class event_builder():
                 for i in range(numPads):
                     rectangles.append( plt.Rectangle((x+xstart+padSize*i+padSize/2., y-padSize/2.), padSize/np.sqrt(2), padSize/np.sqrt(2), fc=y_clr,ec=(0.,0.,0.,1.),angle=45., alpha=0.5) )
                     plt.gca().add_patch(rectangles[i])
-                plt.plot(x, y, 'd', color='crimson', markersize=8, alpha=0.5)
+                #plt.plot(x, y, 'd', color='crimson', markersize=8, alpha=0.5)
 
         
 

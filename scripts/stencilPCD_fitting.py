@@ -37,19 +37,26 @@ class pcd_fitter():
         self.fit_inductive                  = True
 
         # Very initial values for fitting ranges:
-        self.dt_fixed_flag                   = False
-        self.dx_fixed_flag                   = False
-        self.dy_fixed_flag                   = False
-        self.Q_scale_fixed_flag              = False
+        self.dt_fixed_flag                  = False
+        self.dx_fixed_flag                  = False
+        self.dy_fixed_flag                  = False
+        self.Q_scale_fixed_flag             = False
         
-        self.dt_range_low                    = -10.
-        self.dt_range_high                   = 10.
-        self.dx_range_low                    = -6.0
-        self.dx_range_high                   = 6.0
-        self.dy_range_low                    = -6.0
-        self.dy_range_high                   = 6.0
-        self.Q_scale_range_low               = 0.5
-        self.Q_scale_range_high              = 1.5
+        self.dt_range_low                   = -10.
+        self.dt_range_high                  = 10.
+        self.dx_range_low                   = -6.0
+        self.dx_range_high                  = 6.0
+        self.dy_range_low                   = -6.0
+        self.dy_range_high                  = 6.0
+        self.Q_scale_range_low              = 0.5
+        self.Q_scale_range_high             = 1.5
+        
+        self.m_fit                          = None  
+        self.m_nfitdata                     = 0
+        self.m_nparam                       = 0
+        self.m_chi2NDF                      = 0.0
+        
+        self.verbose                        = False
 
     def clean(self):
         self.time_array                     = None
@@ -96,6 +103,9 @@ class pcd_fitter():
             return True
         else:
             return False
+
+    def _set_verbose(self, flag):
+        self.verbose = flag
     
     def load_one_event(self):
         # Build event:
@@ -104,6 +114,8 @@ class pcd_fitter():
 
         if self.fit_inductive:
             n_build_channel = len(self.builder.selected_all_id)
+            if self.verbose:
+                print(f'===> All channel fitting: total {n_build_channel} channels.')
 
             # Test channel id:
             for chaid in self.fit_channelsId:
@@ -135,6 +147,8 @@ class pcd_fitter():
 
         else:
             n_build_channel = len(self.builder.selected_coll_id)
+            if self.verbose:
+                print(f'===> Collection-only channel fitting: total {n_build_channel} channels.')
 
             # Test channel id:
             for chaid in self.fit_channelsId:
@@ -163,6 +177,12 @@ class pcd_fitter():
             self.strip_type_array = np.array(self.strip_type_array)
             self.strip_charge_array = self.builder.charge_coll[self.fit_channelsId]
             self.total_charge_truth = np.sum(self.builder.charge_coll)
+
+        # Set the fitting data number:
+        self.m_nfitdata = np.sum(np.array([len(wf) for wf in self.waveform_array]))
+        
+        if self.verbose:
+            print(f'===> Total fit data number is {self.m_nfitdata}.')
 
 
     def _set_dt_fixed(self, flag):
@@ -193,7 +213,16 @@ class pcd_fitter():
     def _set_Q_scale_range(self, low, high):    
         self.Q_scale_range_low = low                    
         self.Q_scale_range_high = high                   
+
+    ## Getter
+    def _get_fit_status(self):
+        return self.m_fit.valid
         
+    def _get_chi2NDF(self):
+        # Calculate the reduced chi2 manually:
+        self.m_chi2NDF = self.m_fit.fval / ( self.m_nfitdata - self.m_nparam) 
+        return self.m_chi2NDF
+
 
     def onePC_fitting(self, t0, x0, y0, Q0):
         
@@ -240,7 +269,21 @@ class pcd_fitter():
         m.limits['Q0'] = (self.Q_scale_range_low, self.Q_scale_range_high)
 
         m.migrad()
+
+        self.m_nparam = 4
+        if self.dt_fixed_flag:
+            self.m_nparam -= 1
+        if self.dx_fixed_flag:
+            self.m_nparam -= 1
+        if self.dy_fixed_flag:
+            self.m_nparam -= 1
+        if self.Q_scale_fixed_flag:
+            self.m_nparam -= 1
         
+        if self.verbose:
+            print(f"===> Total fitting paramters number is {self.m_nparam}.")
+            
+        self.m_fit = m
         return m
 
 

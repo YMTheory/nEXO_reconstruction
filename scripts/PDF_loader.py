@@ -22,7 +22,7 @@ class loader():
         elif run_env == 'LLNL':
             pass
         elif run_env == "SLAC":
-            ymlfile = '/sdf/home/m/miaoyu/Reconstruction/repo/nEXO_reconstruction/scripts/config_SLAC.yml'
+            ymlfile = '/fs/ddn/sdf/group/nexo/users/miaoyu/Reconstruction/Softwares/nEXO_reconstruction/scripts/config_SLAC.yml'
         else:
             print(f'Error: wrong run environment configuration {run_env}. ')
         with open(ymlfile, 'r' ) as config_file:
@@ -65,7 +65,7 @@ class loader():
             for y in np.arange(0, 15, 0.5):
                 #filename = f'/Users/yumiao/Documents/Works/0nbb/nEXO/Reconstruction/waveform/nEXO_reconstruction/diffPDFs/z-622mm_IHEP/stencilPDF_xstripx{x:.1f}y{y:.1f}.npz'
                 #filename = f'/Users/yumiao/Documents/Works/0nbb/nEXO/Reconstruction/waveform/nEXO_reconstruction/diffPDFs/z-622mm/stencilPDF_xstripx{x:.1f}y{y:.1f}.npz'
-                filename = f'{self.path}stencilPDF_chargex{x:.1f}y{y:.1f}z-622.0_xstripx0.0y0.0.npz'
+                filename = f'{self.path}stencilPDF_chargex{x:.1f}y{y:.1f}z-622.0_xstripx0.0y0.0_PCDxyHalfSize.npz'
                 if not os.path.exists(filename):
                     print(f'Error: {filename} does not exists!' )
                     continue

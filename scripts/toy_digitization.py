@@ -21,7 +21,7 @@ class digitization():
         elif run_env == 'LLNL':
             pass
         elif run_env == "SLAC":
-            ymlfile = '/sdf/home/m/miaoyu/Reconstruction/repo/nEXO_reconstruction/scripts/config_SLAC.yml'
+            ymlfile = '/fs/ddn/sdf/group/nexo/users/miaoyu/Reconstruction/Softwares/nEXO_reconstruction/scripts/config_SLAC.yml'
         else:
             print(f'Error: wrong run environment configuration {run_env}. ')
         with open(ymlfile, 'r' ) as config_file:

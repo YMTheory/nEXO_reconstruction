@@ -34,6 +34,7 @@ class pcd_fitter():
         self.fit_tmin                       = 0
         self.fit_tmax                       = 1500
         self.waveform_noise                 = True
+        self.fit_inductive                  = True
 
         # Very initial values for fitting ranges:
         self.dt_fixed_flag                   = False
@@ -85,6 +86,9 @@ class pcd_fitter():
     def _set_fit_time_window(self, tmin, tmax):
         self.fit_tmin = tmin
         self.fit_tmax = tmax
+
+    def _set_fit_inductive_flag(self, flag):
+        self.fit_inductive = flag
     
     def _IsMultiSite(self):
         self.builder.get_mc_event(self.event_id)
@@ -98,35 +102,67 @@ class pcd_fitter():
         self.builder.get_mc_event(self.event_id)
         self.builder.group_channels(noise=self.waveform_noise)
 
-        n_build_channel = len(self.builder.selected_all_id)
+        if self.fit_inductive:
+            n_build_channel = len(self.builder.selected_all_id)
 
-        # Test channel id:
-        for chaid in self.fit_channelsId:
-            if chaid > n_build_channel:
-                print(f"Error: channel id {chaid} is out of range from event builder!")
+            # Test channel id:
+            for chaid in self.fit_channelsId:
+                if chaid > n_build_channel:
+                    print(f"Error: channel id {chaid} is out of range from event builder!")
         
-        if len(self.fit_channelsId) == 0:
-            # If no channel is specified, use all channels in the event.
-            self.fit_channelsId = range(n_build_channel)
-            self.fit_nchannels = n_build_channel
+            if len(self.fit_channelsId) == 0:
+                # If no channel is specified, use all channels in the event.
+                self.fit_channelsId = range(n_build_channel)
+                self.fit_nchannels = n_build_channel
         
-        self.time_array = self.builder.time_all[self.fit_channelsId]
-        self.waveform_array = self.builder.wf_all[self.fit_channelsId]
+            self.time_array = self.builder.time_all[self.fit_channelsId]
+            self.waveform_array = self.builder.wf_all[self.fit_channelsId]
 
-        # Set time range for fitting
-        min_index, max_index = int(self.fit_tmin/self.SamplingInterval), int(self.fit_tmax/self.SamplingInterval)+1
+            # Set time range for fitting
+            min_index, max_index = int(self.fit_tmin/self.SamplingInterval), int(self.fit_tmax/self.SamplingInterval)+1
 
-        self.time_array = self.time_array[:,min_index:max_index]
-        self.waveform_array = self.waveform_array[:,min_index:max_index]
+            self.time_array = self.time_array[:,min_index:max_index]
+            self.waveform_array = self.waveform_array[:,min_index:max_index]
 
-        self.strip_x_array = self.builder.strip_x_all[self.fit_channelsId] + self.builder.dx
-        self.strip_y_array = self.builder.strip_y_all[self.fit_channelsId] + self.builder.dy
-        self.strip_type_array = []
-        for elm in self.builder.ystrip_flag_all[self.fit_channelsId]:
-            self.strip_type_array.append(not(elm))
-        self.strip_type_array = np.array(self.strip_type_array)
-        self.strip_charge_array = self.builder.charge_all[self.fit_channelsId]
-        self.total_charge_truth = np.sum(self.builder.charge_all)
+            self.strip_x_array = self.builder.strip_x_all[self.fit_channelsId] + self.builder.dx
+            self.strip_y_array = self.builder.strip_y_all[self.fit_channelsId] + self.builder.dy
+            self.strip_type_array = []
+            for elm in self.builder.ystrip_flag_all[self.fit_channelsId]:
+                self.strip_type_array.append(not(elm))
+            self.strip_type_array = np.array(self.strip_type_array)
+            self.strip_charge_array = self.builder.charge_all[self.fit_channelsId]
+            self.total_charge_truth = np.sum(self.builder.charge_all)
+
+        else:
+            n_build_channel = len(self.builder.selected_coll_id)
+
+            # Test channel id:
+            for chaid in self.fit_channelsId:
+                if chaid > n_build_channel:
+                    print(f"Error: channel id {chaid} is out of range from event builder!")
+        
+            if len(self.fit_channelsId) == 0:
+                # If no channel is specified, use all channels in the event.
+                self.fit_channelsId = range(n_build_channel)
+                self.fit_nchannels = n_build_channel
+        
+            self.time_array = self.builder.time_coll[self.fit_channelsId]
+            self.waveform_array = self.builder.wf_coll[self.fit_channelsId]
+
+            # Set time range for fitting
+            min_index, max_index = int(self.fit_tmin/self.SamplingInterval), int(self.fit_tmax/self.SamplingInterval)+1
+
+            self.time_array = self.time_array[:,min_index:max_index]
+            self.waveform_array = self.waveform_array[:,min_index:max_index]
+
+            self.strip_x_array = self.builder.strip_x_coll[self.fit_channelsId] + self.builder.dx
+            self.strip_y_array = self.builder.strip_y_coll[self.fit_channelsId] + self.builder.dy
+            self.strip_type_array = []
+            for elm in self.builder.ystrip_flag_coll[self.fit_channelsId]:
+                self.strip_type_array.append(not(elm))
+            self.strip_type_array = np.array(self.strip_type_array)
+            self.strip_charge_array = self.builder.charge_coll[self.fit_channelsId]
+            self.total_charge_truth = np.sum(self.builder.charge_coll)
 
 
     def _set_dt_fixed(self, flag):

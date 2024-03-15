@@ -33,6 +33,7 @@ class pcd_fitter():
         self.fit_channelsId                 = []
         self.fit_tmin                       = 0
         self.fit_tmax                       = 1500
+        self.waveform_noise                 = True
 
         # Very initial values for fitting ranges:
         self.dt_fixed_flag                   = False
@@ -78,6 +79,8 @@ class pcd_fitter():
         self.fit_channelsId = channels_id
         self.fit_nchannels = len(channels_id)
         
+    def _set_noise_flag(self, flag):
+        self.waveform_noise = flag
     
     def _set_fit_time_window(self, tmin, tmax):
         self.fit_tmin = tmin
@@ -93,7 +96,7 @@ class pcd_fitter():
     def load_one_event(self):
         # Build event:
         self.builder.get_mc_event(self.event_id)
-        self.builder.group_channels()
+        self.builder.group_channels(noise=self.waveform_noise)
 
         n_build_channel = len(self.builder.selected_all_id)
 

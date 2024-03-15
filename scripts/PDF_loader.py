@@ -2,6 +2,7 @@ import numpy as np
 import os
 from scipy.interpolate import griddata
 import yaml
+import copy
 
 from scripts.globals import run_env
 class loader():
@@ -70,10 +71,15 @@ class loader():
                     print(f'Error: {filename} does not exists!' )
                     continue
                 else:
-                    arr = np.load(filename)
+                    with np.load(filename) as f:
+                    #arr = np.load(filename)
+                        tmp = copy.copy(f)
+                        time = tmp['time']
+                        wf = tmp['wf']
+                        arr = np.vstack((time, wf))
+                        self.pdf_length = len(time)
                     dict_name = f'dx{x:.1f}dy{y:.1f}'
                     self.pcd_diffused_PDFs[dict_name] = arr
-                    self.pdf_length = len(arr['time'])
         self.load_PDF_flag = True
         print('The diffusion PCD PDFs loaded successfully!')
     
@@ -82,7 +88,7 @@ class loader():
             print(f'Error: {name} not in the pre-loaded dictionary.')
             return 0.
         else:
-            t, wf = self.pcd_diffused_PDFs[name]['time'], self.pcd_diffused_PDFs[name]['wf']
+            t, wf = self.pcd_diffused_PDFs[name][0, :], self.pcd_diffused_PDFs[name][:, 1]
             return np.interp(t0, t, wf)
         
         
@@ -144,23 +150,23 @@ class loader():
                 print(f'Error: {name00} not in the pre-loaded dictionary.')
                 return np.zeros(self.pdf_length)
             else:
-                f00 = self.pcd_diffused_PDFs[name00]['wf']
+                f00 = self.pcd_diffused_PDFs[name00][1, :]
             if name01 not in self.pcd_diffused_PDFs :
                 print(f'Error: {name01} not in the pre-loaded dictionary.')
                 return np.zeros(self.pdf_length)
             else:
-                f01 = self.pcd_diffused_PDFs[name01]['wf']
+                f01 = self.pcd_diffused_PDFs[name01][1, :]
             if name10 not in self.pcd_diffused_PDFs :
                 print(f'Error: {name10} not in the pre-loaded dictionary.')
                 return np.zeros(self.pdf_length)
             else:
-                f10 = self.pcd_diffused_PDFs[name10]['wf']
+                f10 = self.pcd_diffused_PDFs[name10][1, :]
             if name11 not in self.pcd_diffused_PDFs :
                 print(f'Error: {name11} not in the pre-loaded dictionary.')
                 return np.zeros(self.pdf_length)
             else:
-                self.pcdPDFs_time = self.pcd_diffused_PDFs[name11]['time']
-                f11 = self.pcd_diffused_PDFs[name11]['wf']
+                self.pcdPDFs_time = self.pcd_diffused_PDFs[name11][0, :]
+                f11 = self.pcd_diffused_PDFs[name11][1, :]
 
             Xs = np.array([x_left, x_left, x_right, x_right])
             Ys = np.array([y_down, y_up, y_down, y_up])

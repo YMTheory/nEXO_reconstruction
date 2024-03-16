@@ -62,11 +62,30 @@ class loader():
     
     def load_diffusedPCD_PDFs(self):
         self.pcd_diffused_PDFs = {}
-        for x in np.arange(0, 30, 0.5):
-            for y in np.arange(0, 15, 0.5):
+        #for x in np.arange(0, 30, 0.5):
+        #    for y in np.arange(0, 15, 0.5):
+        #        #filename = f'/Users/yumiao/Documents/Works/0nbb/nEXO/Reconstruction/waveform/nEXO_reconstruction/diffPDFs/z-622mm_IHEP/stencilPDF_xstripx{x:.1f}y{y:.1f}.npz'
+        #        #filename = f'/Users/yumiao/Documents/Works/0nbb/nEXO/Reconstruction/waveform/nEXO_reconstruction/diffPDFs/z-622mm/stencilPDF_xstripx{x:.1f}y{y:.1f}.npz'
+        #        filename = f'{self.path}stencilPDF_chargex{x:.1f}y{y:.1f}z-622.0_xstripx0.0y0.0.npz'
+        #        if not os.path.exists(filename):
+        #            print(f'Error: {filename} does not exists!' )
+        #            continue
+        #        else:
+        #            with np.load(filename) as f:
+        #            #arr = np.load(filename)
+        #                tmp = copy.copy(f)
+        #                time = tmp['time']
+        #                wf = tmp['wf']
+        #                arr = np.vstack((time, wf))
+        #                self.pdf_length = len(time)
+        #            dict_name = f'dx{x:.1f}dy{y:.1f}'
+        #            self.pcd_diffused_PDFs[dict_name] = arr
+        # finer PDFs in 6mm * 6mm zone
+        for x in np.arange(0, 24, 0.1):
+            for y in np.arange(0, 6, 0.1):
                 #filename = f'/Users/yumiao/Documents/Works/0nbb/nEXO/Reconstruction/waveform/nEXO_reconstruction/diffPDFs/z-622mm_IHEP/stencilPDF_xstripx{x:.1f}y{y:.1f}.npz'
                 #filename = f'/Users/yumiao/Documents/Works/0nbb/nEXO/Reconstruction/waveform/nEXO_reconstruction/diffPDFs/z-622mm/stencilPDF_xstripx{x:.1f}y{y:.1f}.npz'
-                filename = f'{self.path}stencilPDF_chargex{x:.1f}y{y:.1f}z-622.0_xstripx0.0y0.0_PCDxyHalfSize.npz'
+                filename = f'{self.path}stencilPDF_chargex{x:.1f}y{y:.1f}z-622.0_xstripx0.0y0.0.npz'
                 if not os.path.exists(filename):
                     print(f'Error: {filename} does not exists!' )
                     continue
@@ -136,7 +155,10 @@ class loader():
         #    self.pcdPDFs_time = np.arange(0, self.pdf_length, 1)
         #    return np.zeros(self.pdf_length)
         else:
-            step = 0.5
+            if np.abs(dX) < 24.0 and np.abs(dY) < 6.0:
+                step = 0.1
+            else:
+                step = 0.5
             x_left = int(np.abs(dX) / step) * step
             x_right = x_left + step
             y_down = int(np.abs(dY) / step) * step

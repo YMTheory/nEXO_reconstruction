@@ -1,0 +1,5 @@
+asic_model_file: /fs/ddn/sdf/group/nexo/users/miaoyu/Reconstruction/Data/Configs/cryo_asic_model.root
+asic_noise_file: /fs/ddn/sdf/group/nexo/users/miaoyu/Reconstruction/Data/Configs/noise_lib_1_2_us_100e.root
+asic_noise_psd_file: /fs/ddn/sdf/group/nexo/users/miaoyu/Reconstruction/Data/Configs/noise_unshape.root
+wp_file: /fs/ddn/sdf/group/nexo/users/miaoyu/Reconstruction/Data/Configs/singleStripWP6mm_COMSOL.root
+pdf_path: /fs/ddn/sdf/group/nexo/users/miaoyu/Reconstruction/Data/PDFs/z-622mm_halfPCDxySize/

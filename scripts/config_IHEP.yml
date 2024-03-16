@@ -1,0 +1,4 @@
+asic_model_file: /junofs/users/miaoyu/0nbb/official_offline/nexo-offline/data/cryo_asic_model.root
+asic_noise_file: /junofs/users/miaoyu/0nbb/official_offline/nexo-offline/data/noise_lib_1_2_us_100e.root
+asic_noise_psd_file: /junofs/users/miaoyu/0nbb/official_offline/nexo-offline/data/noise_unshape.root
+wp_file: /junofs/users/miaoyu/0nbb/official_offline/nexo-offline/data/singleStripWP6mm_COMSOL.root

@@ -14,6 +14,8 @@ class loader():
         self.pdf_length         = 0
         self.gridPDFs_time      = None
         self.pcdPDFs_time       = None
+
+        self.verbose            = False
         
         self.path = None
         if run_env == 'LOCAL':
@@ -32,6 +34,9 @@ class loader():
             self.path = filelist['pdf_path']
 
         self.load_mode = mode
+
+    def _set_verbose(self, vb):
+        self.verbose = vb
         
     def load_diffused_PDFs(self):
         self.grid_diffused_PDFs = {} # dictionary to store the diffused PDFs.
@@ -167,6 +172,8 @@ class loader():
             name01 = f'dx{x_left:.1f}dy{y_up:.1f}'
             name10 = f'dx{x_right:.1f}dy{y_down:.1f}'
             name11 = f'dx{x_right:.1f}dy{y_up:.1f}'
+            if self.verbose:
+                print(f'Interpolation position ({dX:.2f}, {dY:.2f}) with corner pdf names [{name00}, {name01}, {name10}, {name11}].')
             
             if name00 not in self.pcd_diffused_PDFs :
                 print(f'Error: {name00} not in the pre-loaded dictionary.')

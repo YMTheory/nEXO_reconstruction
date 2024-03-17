@@ -3,6 +3,22 @@ import os
 from scipy.interpolate import griddata
 import yaml
 import copy
+from IPython import get_ipython
+def isnotebook():
+    try:
+        shell = get_ipython().__class__.__name__
+        if shell == 'ZMQInteractiveShell':
+            return True   # Jupyter notebook or qtconsole
+        elif shell == 'TerminalInteractiveShell':
+            return False  # Terminal running IPython
+        else:
+            return False  # Other type (?)
+    except NameError:
+        return False
+if (isnotebook()):
+    from tqdm.notebook import tqdm
+else:
+    from tqdm import tqdm
 
 from scripts.globals import run_env
 class loader():
@@ -86,8 +102,8 @@ class loader():
         #            dict_name = f'dx{x:.1f}dy{y:.1f}'
         #            self.pcd_diffused_PDFs[dict_name] = arr
         # finer PDFs in 6mm * 6mm zone
-        for x in np.arange(0, 24, 0.1):
-            for y in np.arange(0, 6, 0.1):
+        for x in tqdm(np.arange(0, 24.0, 0.1)):
+            for y in np.arange(0, 6.1, 0.1):
                 #filename = f'/Users/yumiao/Documents/Works/0nbb/nEXO/Reconstruction/waveform/nEXO_reconstruction/diffPDFs/z-622mm_IHEP/stencilPDF_xstripx{x:.1f}y{y:.1f}.npz'
                 #filename = f'/Users/yumiao/Documents/Works/0nbb/nEXO/Reconstruction/waveform/nEXO_reconstruction/diffPDFs/z-622mm/stencilPDF_xstripx{x:.1f}y{y:.1f}.npz'
                 filename = f'{self.path}stencilPDF_chargex{x:.1f}y{y:.1f}z-622.0_xstripx0.0y0.0.npz'
@@ -132,77 +148,72 @@ class loader():
         #else:
         #    print('The diffusion PDFs have already been pre-loaded!')
             
-        xmin, xmax, ymin, ymax = -29.5, 29.5, -6., 6.
+        #xmin, xmax, ymin, ymax = -29.5, 29.5, -6., 6.
+        xmin, xmax, ymin, ymax = -24., 24., -6., 6.
         PadSize = 6.0
         nPadHalfStrip = 8
         
         if dX < xmin or dX > xmax:
             # The point charge is too far away from the strip along the x-axis (which is not the alignment direction of the strip), omit the contributions from this charge then.
             print(f"The point charge is too far away from the strip along the x-axis! ({dX:.2f}, {dY:.2f}) mm.")
-            self.pdf_length = 500.
+            self.pdf_length = 500
             self.pcdPDFs_time = np.arange(0, self.pdf_length, 1)
             return np.zeros(self.pdf_length) # return a zero waveform, no contributions from this charge on the strip.
         
-        elif dY < ymin or dY > ymax and np.abs(dY) <= PadSize * nPadHalfStrip:
-            # Taking the symmetry of the strip, assuming the relative position on each pad is the same, the waveform should be the same.
-            dY = dY % PadSize
+        #elif dY < ymin or dY > ymax and np.abs(dY) <= PadSize * nPadHalfStrip:
             
-        elif np.abs(dY) > PadSize * nPadHalfStrip:
+        if np.abs(dY) > PadSize * nPadHalfStrip:
             print(f"The point charge is out the range along the strip direction! ({dX:.2f}, {dY:.2f}) mm.")
             # Currently I set them as 0 but it could be incorrect if the charge is still close to the end of the strip.
-            self.pdf_length = 500.
+            self.pdf_length = 500
             self.pcdPDFs_time = np.arange(0, self.pdf_length, 1)
             return np.zeros(self.pdf_length) # return a zero waveform, no contributions from this charge on the strip.
         
-        #if dX < xmin or dX > xmax or dY < ymin or dY > ymax:
-        #    print(f'Error: dX or dY out of range! ({dX}, {dY})')
-        #    self.pdf_length = 500.
-        #    self.pcdPDFs_time = np.arange(0, self.pdf_length, 1)
-        #    return np.zeros(self.pdf_length)
-        else:
-            if np.abs(dX) < 24.0 and np.abs(dY) < 6.0:
-                step = 0.1
-            else:
-                step = 0.5
-            x_left = int(np.abs(dX) / step) * step
-            x_right = x_left + step
-            y_down = int(np.abs(dY) / step) * step
-            y_up = y_down + step
-            name00 = f'dx{x_left:.1f}dy{y_down:.1f}'
-            name01 = f'dx{x_left:.1f}dy{y_up:.1f}'
-            name10 = f'dx{x_right:.1f}dy{y_down:.1f}'
-            name11 = f'dx{x_right:.1f}dy{y_up:.1f}'
-            if self.verbose:
-                print(f'Interpolation position ({dX:.2f}, {dY:.2f}) with corner pdf names [{name00}, {name01}, {name10}, {name11}].')
-            
-            if name00 not in self.pcd_diffused_PDFs :
-                print(f'Error: {name00} not in the pre-loaded dictionary.')
-                return np.zeros(self.pdf_length)
-            else:
-                f00 = self.pcd_diffused_PDFs[name00][1, :]
-            if name01 not in self.pcd_diffused_PDFs :
-                print(f'Error: {name01} not in the pre-loaded dictionary.')
-                return np.zeros(self.pdf_length)
-            else:
-                f01 = self.pcd_diffused_PDFs[name01][1, :]
-            if name10 not in self.pcd_diffused_PDFs :
-                print(f'Error: {name10} not in the pre-loaded dictionary.')
-                return np.zeros(self.pdf_length)
-            else:
-                f10 = self.pcd_diffused_PDFs[name10][1, :]
-            if name11 not in self.pcd_diffused_PDFs :
-                print(f'Error: {name11} not in the pre-loaded dictionary.')
-                return np.zeros(self.pdf_length)
-            else:
-                self.pcdPDFs_time = self.pcd_diffused_PDFs[name11][0, :]
-                f11 = self.pcd_diffused_PDFs[name11][1, :]
+        if self.verbose:
+            print(f'Replace dY ({dY:.2f}) aby {dY%PadSize:.2f} due to symmetry.')
+        dY = dY % PadSize
 
-            Xs = np.array([x_left, x_left, x_right, x_right])
-            Ys = np.array([y_down, y_up, y_down, y_up])
-            Zs = np.array([f00, f01, f10, f11])
-            f = griddata((Xs, Ys), Zs, (np.abs(dX), np.abs(dY)), method='linear')
-            
-            return f
+        step = 0.1
+        x_left = int(np.abs(dX) / step) * step
+        x_right = x_left + step
+        y_down = int(np.abs(dY) / step) * step
+        y_up = y_down + step
+        name00 = f'dx{x_left:.1f}dy{y_down:.1f}'
+        name01 = f'dx{x_left:.1f}dy{y_up:.1f}'
+        name10 = f'dx{x_right:.1f}dy{y_down:.1f}'
+        name11 = f'dx{x_right:.1f}dy{y_up:.1f}'
+        if self.verbose:
+            print(f'Interpolation position ({dX:.2f}, {dY:.2f}) with corner pdf names [{name00}, {name01}, {name10}, {name11}].')
+        
+        self.pdf_length = 500
+        if name00 not in self.pcd_diffused_PDFs :
+            print(f'Error: {name00} not in the pre-loaded dictionary.')
+            return np.zeros(self.pdf_length)
+        else:
+            f00 = self.pcd_diffused_PDFs[name00][1, :]
+        if name01 not in self.pcd_diffused_PDFs :
+            print(f'Error: {name01} not in the pre-loaded dictionary.')
+            return np.zeros(self.pdf_length)
+        else:
+            f01 = self.pcd_diffused_PDFs[name01][1, :]
+        if name10 not in self.pcd_diffused_PDFs :
+            print(f'Error: {name10} not in the pre-loaded dictionary.')
+            return np.zeros(self.pdf_length)
+        else:
+            f10 = self.pcd_diffused_PDFs[name10][1, :]
+        if name11 not in self.pcd_diffused_PDFs :
+            print(f'Error: {name11} not in the pre-loaded dictionary.')
+            return np.zeros(self.pdf_length)
+        else:
+            self.pcdPDFs_time = self.pcd_diffused_PDFs[name11][0, :]
+            f11 = self.pcd_diffused_PDFs[name11][1, :]
+
+        Xs = np.array([x_left, x_left, x_right, x_right])
+        Ys = np.array([y_down, y_up, y_down, y_up])
+        Zs = np.array([f00, f01, f10, f11])
+        f = griddata((Xs, Ys), Zs, (np.abs(dX), np.abs(dY)), method='linear')
+        
+        return f
 
             
     def diffused_waveform_oneChannel(self, dX, dY, t):

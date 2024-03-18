@@ -223,6 +223,11 @@ class pcd_fitter():
         self.m_chi2NDF = self.m_fit.fval / ( self.m_nfitdata - self.m_nparam) 
         return self.m_chi2NDF
 
+    def _get_filename(self):
+        return self.filename
+
+    def _get_evtid(self):
+        return self.event_id
 
     def onePC_fitting(self, t0, x0, y0, Q0):
         

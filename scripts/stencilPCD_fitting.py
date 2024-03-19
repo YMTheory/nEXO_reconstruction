@@ -35,6 +35,7 @@ class pcd_fitter():
         self.fit_tmax                       = 1500
         self.waveform_noise                 = True
         self.fit_inductive                  = True
+        self.fit_pdf_fine                   = True
 
         # Very initial values for fitting ranges:
         self.dt_fixed_flag                  = False
@@ -50,6 +51,7 @@ class pcd_fitter():
         self.dy_range_high                  = 6.0
         self.Q_scale_range_low              = 0.5
         self.Q_scale_range_high             = 1.5
+        self.SS_cut                         = 6.0
         
         self.m_fit                          = None  
         self.m_nfitdata                     = 0
@@ -89,6 +91,10 @@ class pcd_fitter():
         
     def _set_noise_flag(self, flag):
         self.waveform_noise = flag
+
+    def _set_pdf_fine(self, fine):
+        self.fit_pdf_fine = fine
+        self.load.PDF_fine = fine
     
     def _set_fit_time_window(self, tmin, tmax):
         self.fit_tmin = tmin
@@ -96,10 +102,13 @@ class pcd_fitter():
 
     def _set_fit_inductive_flag(self, flag):
         self.fit_inductive = flag
+
+    def _set_SS_cut(self, cut):
+        self.SS_cut = cut
     
     def _IsMultiSite(self):
         self.builder.get_mc_event(self.event_id)
-        if self.builder.IsMultiEvent_MCtruth():
+        if self.builder.IsMultiEvent_MCtruth(self.SS_cut):
             return True
         else:
             return False

@@ -30,9 +30,10 @@ class loader():
         self.pdf_length         = 0
         self.gridPDFs_time      = None
         self.pcdPDFs_time       = None
+        self.PDF_fine           = 0   # 0 for coarse, 1 for fine
 
         self.verbose            = False
-        
+
         self.path = None
         if run_env == 'LOCAL':
             ymlfile = '/Users/yumiao/Documents/Works/0nbb/nEXO/Reconstruction/waveform/nEXO_reconstruction/scripts/config.yml'
@@ -102,8 +103,17 @@ class loader():
         #            dict_name = f'dx{x:.1f}dy{y:.1f}'
         #            self.pcd_diffused_PDFs[dict_name] = arr
         # finer PDFs in 6mm * 6mm zone
-        for x in tqdm(np.arange(0, 24.0, 0.1)):
-            for y in np.arange(0, 6.1, 0.1):
+        print('=====> Loading diffusion PCD PDF files...')
+        if self.PDF_fine == 0:
+            # coarse PDFs
+            pdf_xmin, pdf_xmax, pdf_xstep = 0, 30, 0.5
+            pdf_ymin, pdf_ymax, pdf_ystep = 0, 6.5, 0.5
+        elif self.PDF_fine == 1:
+            # fine PDFs
+            pdf_xmin, pdf_xmax, pdf_xstep = 0, 24, 0.1
+            pdf_ymin, pdf_ymax, pdf_ystep = 0, 6.1, 0.1
+        for x in tqdm(np.arange(pdf_xmin, pdf_xmax, pdf_xstep)):
+            for y in np.arange(pdf_ymin, pdf_ymax, pdf_ystep):
                 #filename = f'/Users/yumiao/Documents/Works/0nbb/nEXO/Reconstruction/waveform/nEXO_reconstruction/diffPDFs/z-622mm_IHEP/stencilPDF_xstripx{x:.1f}y{y:.1f}.npz'
                 #filename = f'/Users/yumiao/Documents/Works/0nbb/nEXO/Reconstruction/waveform/nEXO_reconstruction/diffPDFs/z-622mm/stencilPDF_xstripx{x:.1f}y{y:.1f}.npz'
                 filename = f'{self.path}stencilPDF_chargex{x:.1f}y{y:.1f}z-622.0_xstripx0.0y0.0.npz'
@@ -148,15 +158,16 @@ class loader():
         #else:
         #    print('The diffusion PDFs have already been pre-loaded!')
             
-        #xmin, xmax, ymin, ymax = -29.5, 29.5, -6., 6.
-        xmin, xmax, ymin, ymax = -24., 24., -6., 6.
+        if self.PDF_fine == 0:
+            xmin, xmax, ymin, ymax = -29.5, 29.5, -6., 6.
+        elif self.PDF_fine == 1:
+            xmin, xmax, ymin, ymax = -23.8, 23.8, -6., 6.
         PadSize = 6.0
         nPadHalfStrip = 8
         
-        if dX < xmin or dX > xmax:
+        if dX <= xmin or dX >= xmax:
             # The point charge is too far away from the strip along the x-axis (which is not the alignment direction of the strip), omit the contributions from this charge then.
             print(f"The point charge is too far away from the strip along the x-axis! ({dX:.2f}, {dY:.2f}) mm.")
-            self.pdf_length = 500
             self.pcdPDFs_time = np.arange(0, self.pdf_length, 1)
             return np.zeros(self.pdf_length) # return a zero waveform, no contributions from this charge on the strip.
         
@@ -165,15 +176,17 @@ class loader():
         if np.abs(dY) > PadSize * nPadHalfStrip:
             print(f"The point charge is out the range along the strip direction! ({dX:.2f}, {dY:.2f}) mm.")
             # Currently I set them as 0 but it could be incorrect if the charge is still close to the end of the strip.
-            self.pdf_length = 500
             self.pcdPDFs_time = np.arange(0, self.pdf_length, 1)
             return np.zeros(self.pdf_length) # return a zero waveform, no contributions from this charge on the strip.
         
         if self.verbose:
-            print(f'Replace dY ({dY:.2f}) aby {dY%PadSize:.2f} due to symmetry.')
+            print(f'Replace dY ({dY:.2f}) by {dY%PadSize:.2f} due to symmetry.')
         dY = dY % PadSize
 
-        step = 0.1
+        if self.PDF_fine == 0:
+            step = 0.5
+        elif self.PDF_fine == 1 :
+            step = 0.1
         x_left = int(np.abs(dX) / step) * step
         x_right = x_left + step
         y_down = int(np.abs(dY) / step) * step
@@ -185,7 +198,6 @@ class loader():
         if self.verbose:
             print(f'Interpolation position ({dX:.2f}, {dY:.2f}) with corner pdf names [{name00}, {name01}, {name10}, {name11}].')
         
-        self.pdf_length = 500
         if name00 not in self.pcd_diffused_PDFs :
             print(f'Error: {name00} not in the pre-loaded dictionary.')
             return np.zeros(self.pdf_length)

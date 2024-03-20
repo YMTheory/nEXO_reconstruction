@@ -81,6 +81,9 @@ class event_builder():
             return True
         else:
             return False
+
+    def set_amp_thre(self, thre):
+        self.amp_thre = thre
     
 
     def channel_selection(self):

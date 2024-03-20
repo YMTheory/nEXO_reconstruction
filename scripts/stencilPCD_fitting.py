@@ -36,6 +36,7 @@ class pcd_fitter():
         self.waveform_noise                 = True
         self.fit_inductive                  = True
         self.fit_pdf_fine                   = True
+        self.amplitude_threshold            = 0
 
         # Very initial values for fitting ranges:
         self.dt_fixed_flag                  = False
@@ -112,6 +113,10 @@ class pcd_fitter():
             return True
         else:
             return False
+
+    def _set_amplitude_threshold(self, thre):
+        self.amplitude_threshold = thre
+        self.builder.set_amp_thre(thre)
 
     def _set_verbose(self, flag):
         self.verbose = flag

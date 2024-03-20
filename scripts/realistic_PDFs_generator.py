@@ -26,7 +26,7 @@ else:
 
 class generator():
     
-    def __init__(self, x0=0., y0=0., z0=-1022., q0=1e5, xy_step=0.5, z_step=0.5, charge_cubic_L=20., charge_cubic_H=20.) -> None:
+    def __init__(self, x0=0., y0=0., z0=-1022., q0=1e5, xy_step=0.5, z_step=0.5, charge_cubic_L=50., charge_cubic_H=50.) -> None:
         self.digi = digitization(SamplingFrequency=2.0)
         
         self.x0 = x0
@@ -106,30 +106,43 @@ class generator():
         
     def diffused_point_charges(self):
         # Must empty the arrays before generating new ones
-        self.q_cubic = np.zeros((self.n_step_L, self.n_step_L, self.n_step_H))
+        ##self.q_cubic = np.zeros((self.n_step_L, self.n_step_L, self.n_step_H))
         self.grid_x, self.grid_y, self.grid_z, self.grid_q = [], [], [], []
         tot_prob = 0.
         tc = np.abs(self.fAnodeZ - self.z0) / self.v_drift
         v_grid = self.xy_step * self.xy_step * self.z_step
-        for i, xc in tqdm(enumerate(np.linspace(-self.charge_cubic_L/2.+self.x0, self.charge_cubic_L/2.+self.x0, self.n_step_L))):
-            for j, yc in enumerate(np.linspace(-self.charge_cubic_L/2.+self.y0, self.charge_cubic_L/2.+self.y0, self.n_step_L)):
-                for k, zc in enumerate(np.linspace(-self.charge_cubic_H/2.+self.fAnodeZ, self.charge_cubic_H/2.+self.fAnodeZ, self.n_step_H)):
-                    self.grid_x.append(xc)
-                    self.grid_y.append(yc)
-                    self.grid_z.append(zc-self.fAnodeZ+self.z0)
-                    tc = np.abs(self.fAnodeZ-self.z0) / self.v_drift
-                    ## X0, X = (self.x0, self.y0, self.z0, 0), (xc, yc, zc, tc)
-                    # Consider electron attentuation during drift
-                    ## prob_grid = self.diffusion_PDF(X0, X)  * self.electron_attenuation(tc)
-                    X0, X = (self.x0, self.y0, self.z0), (xc, yc, self.grid_z[-1])
-                    prob_grid = self.diffusion_PDF(X0, X, tc) * self.electron_attenuation(tc)
+        for dx in tqdm(np.arange(-self.charge_cubic_L/2., self.charge_cubic_L/2.+self.xy_step, self.xy_step)):
+            for dy in np.arange(-self.charge_cubic_L/2., self.charge_cubic_L/2.+self.xy_step, self.xy_step):
+                for dz in np.arange(-self.charge_cubic_H/2., self.charge_cubic_H/2.+self.z_step, self.z_step):
+                    X0, X = [self.x0, self.y0, self.z0], [self.x0+dx, self.y0+dy, self.z0+dz]
+                    prob_grid = self.diffusion_PDF(X0, X, tc)
+
+                    self.grid_x.append(self.x0 + dx)
+                    self.grid_y.append(self.y0 + dy)
+                    self.grid_z.append(self.z0 + dz)
+                    self.grid_q.append(prob_grid * v_grid * self.q0)
                     
-                    self.q_cubic[i, j, k] = prob_grid * self.q0 * v_grid
-                    self.grid_q.append(prob_grid * self.q0 * v_grid)
-                    tot_prob = tot_prob + prob_grid * v_grid
+                    tot_prob += prob_grid * v_grid
+
+        ###for i, xc in tqdm(enumerate(np.linspace(-self.charge_cubic_L/2.+self.x0, self.charge_cubic_L/2.+self.x0, self.n_step_L))):
+        ###    for j, yc in enumerate(np.linspace(-self.charge_cubic_L/2.+self.y0, self.charge_cubic_L/2.+self.y0, self.n_step_L)):
+        ###        for k, zc in enumerate(np.linspace(-self.charge_cubic_H/2.+self.fAnodeZ, self.charge_cubic_H/2.+self.fAnodeZ, self.n_step_H)):
+        ###            self.grid_x.append(xc)
+        ###            self.grid_y.append(yc)
+        ###            self.grid_z.append(zc-self.fAnodeZ+self.z0)
+        ###            tc = np.abs(self.fAnodeZ-self.z0) / self.v_drift
+        ###            ## X0, X = (self.x0, self.y0, self.z0, 0), (xc, yc, zc, tc)
+        ###            # Consider electron attentuation during drift
+        ###            ## prob_grid = self.diffusion_PDF(X0, X)  * self.electron_attenuation(tc)
+        ###            X0, X = (self.x0, self.y0, self.z0), (xc, yc, self.grid_z[-1])
+        ###            prob_grid = self.diffusion_PDF(X0, X, tc) * self.electron_attenuation(tc)
+        ###            
+        ###            self.q_cubic[i, j, k] = prob_grid * self.q0 * v_grid
+        ###            self.grid_q.append(prob_grid * self.q0 * v_grid)
+        ###            tot_prob = tot_prob + prob_grid * v_grid
                     
         # normalization
-        self.q_cubic = self.q_cubic * (self.q0 / np.sum(self.q_cubic))
+        #self.q_cubic = self.q_cubic * (self.q0 / np.sum(self.q_cubic))
         print(f"-> Smearing charge coefficients in three-dimension: sigma_xy = {self.DL:.6f} mm2/us and sigma_z = {self.DT:.6f} mm2/us.")
         print(f'-> Drift distance for this event is {self.fAnodeZ-self.z0: .3f} mm and drift time is {tc:.3f} us.')
         print(f'---> which gives a spatial smearing of {np.sqrt(2*self.DT*tc):.2f} mm (xy plane) and {np.sqrt(2*self.DL*tc):.2f} mm z-direction.')

@@ -18,4 +18,4 @@ Analysis scripts for fitting results.
 
 - analysis.py: where I do the whole analysis using the configuration files and tool files. I need to specify a list of variables I want to analyse, currently it will print the charge reconstruction and plot all 1D and 2D plots for thoes variables.
 
-
+An example running command could be `python analysis.py --variables fitx fity relQ`

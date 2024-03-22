@@ -1,0 +1,25 @@
+figure.figsize: 7,5
+font.serif: Times New Roman
+axes.titlesize : 14
+axes.labelsize : 14
+lines.linewidth : 1.5
+lines.markersize : 10
+xtick.labelsize : 12
+#xtick.top : True
+xtick.minor.visible : True
+xtick.direction      : in
+xtick.major.size     : 11
+xtick.minor.size     : 7
+xtick.major.pad      : 7
+ytick.right : True
+ytick.minor.visible  : True
+ytick.direction      : in
+ytick.labelsize : 12
+ytick.minor.size     : 7
+ytick.major.size     : 11
+ytick.major.pad      : 7
+legend.fontsize      : 14
+legend.title_fontsize: 14
+legend.frameon       : False
+axes.formatter.limits: -2, 6
+axes.formatter.use_mathtext: True

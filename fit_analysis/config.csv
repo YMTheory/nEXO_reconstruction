@@ -1,0 +1,2 @@
+fitid,inductive,noise,fine,sscut,threshold,year,month,day,label
+1,True,True,fine,1.0,40,2024,03,20, 1.0 mm SS cut

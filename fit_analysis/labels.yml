@@ -1,0 +1,11 @@
+ chi2: 
+ fitx: fit X [mm]
+ fitt: fit time [us]
+ fitterr: fit time err [us]
+ fitxerr: fit Xerr [mm]
+ fity: fit Y [mm]
+ fityerr: fit Yerr [mm]
+ fitQ: fit Q
+ fitQerr: fit Qerr
+ trueQ: true Q
+ relQ: (fitQ - trueQ)/trueQ [%]

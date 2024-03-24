@@ -337,6 +337,7 @@ class pcd_fitter():
 
 
         if draw:
+            print(f'Total {self.fit_nchannels} channels are being plotted !')
             ncol = 4
             nrow = int((self.fit_nchannels-1)/ncol) + 1
             fig, ax = plt.subplots(nrow, ncol, figsize=(16, 5*nrow))

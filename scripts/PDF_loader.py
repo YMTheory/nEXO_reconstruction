@@ -103,7 +103,7 @@ class loader():
         #            dict_name = f'dx{x:.1f}dy{y:.1f}'
         #            self.pcd_diffused_PDFs[dict_name] = arr
         # finer PDFs in 6mm * 6mm zone
-        print('=====> Loading diffusion PCD PDF files...')
+        print(f'=====> Loading diffusion PCD PDF files from {self.path} <<< ')
         if self.PDF_fine == 0:
             # coarse PDFs
             pdf_xmin, pdf_xmax, pdf_xstep = 0, 30, 0.5

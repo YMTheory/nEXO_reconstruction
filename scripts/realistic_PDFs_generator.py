@@ -109,6 +109,7 @@ class generator():
         ##self.q_cubic = np.zeros((self.n_step_L, self.n_step_L, self.n_step_H))
         self.grid_x, self.grid_y, self.grid_z, self.grid_q = [], [], [], []
         tot_prob = 0.
+        tot_charge = 0.
         tc = np.abs(self.fAnodeZ - self.z0) / self.v_drift
         v_grid = self.xy_step * self.xy_step * self.z_step
         for dx in tqdm(np.arange(-self.charge_cubic_L/2., self.charge_cubic_L/2.+self.xy_step, self.xy_step)):
@@ -123,6 +124,7 @@ class generator():
                     self.grid_q.append(prob_grid * v_grid * self.q0)
                     
                     tot_prob += prob_grid * v_grid
+                    tot_charge += self.grid_q[-1]
 
         ###for i, xc in tqdm(enumerate(np.linspace(-self.charge_cubic_L/2.+self.x0, self.charge_cubic_L/2.+self.x0, self.n_step_L))):
         ###    for j, yc in enumerate(np.linspace(-self.charge_cubic_L/2.+self.y0, self.charge_cubic_L/2.+self.y0, self.n_step_L)):
@@ -148,6 +150,7 @@ class generator():
         print(f'---> which gives a spatial smearing of {np.sqrt(2*self.DT*tc):.2f} mm (xy plane) and {np.sqrt(2*self.DL*tc):.2f} mm z-direction.')
         print(f'-> Attenuation coefficient is {self.electron_attenuation(tc):.3f}.')
         print(f'-> Check total probability: {tot_prob:.3f}.')
+        print(f'-> Check total charges: {tot_charge:.3e}.')
 
     
     def collection_charges_onOneChannel(self, strip_x, strip_y, IsAXstrip=True):

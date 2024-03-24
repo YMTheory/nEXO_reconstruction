@@ -4,12 +4,17 @@ import pandas as pd
 
 import glob
 import os
+import re
 
 class loader():
-    def __init__(self, inductive, noise, fine, sscut, threshold, year, month, day, label):
+    def __init__(self, inductive=True, noise=True, fine='fine', sscut=1.0, threshold=40, year=2024, month=3, day=22, label='default'):
         self.inductive  = inductive
         self.noise      = noise
         self.fine       = fine
+        if self.fine == 'fine':
+            self.fine_no = 1
+        else:
+            self.fine_no = 0
         self.sscut      = sscut
         self.threshold  = threshold
         self.year       = year
@@ -17,6 +22,8 @@ class loader():
         self.day        = day
         self.label      = label
 
+        self.onefile    = None
+        self.rootfile   = None
 
     def _get_label(self):
         return self.label
@@ -26,7 +33,11 @@ class loader():
     def format_filenames(self):
         path = '/fs/ddn/sdf/group/nexo/users/miaoyu/Reconstruction/Data/Fits/results'
         prefix = 'fit_MCtruthSS_seed'
-        suffix = '_inductive'+self.inductive+'_noise'+self.noise+'_'+self.fine+'newPDFs_'+self.month+self.day+'_refitmax5_SScut'+self.sscut+'mm_ampthre'+self.threshold+'.csv'
+        if self.month < 10:
+            zero = '0'
+        else:
+            zero = ''
+        suffix = '_inductive'+str(self.inductive)+'_noise'+str(self.noise)+'_'+self.fine+'newPDFs_'+str(zero)+str(self.month)+str(self.day)+'_refitmax5_SScut'+f'{self.sscut:.1f}'+'mm_ampthre'+f'{self.threshold}'+'.csv'
         
         
         # Match all files, do not specify the seed manually
@@ -86,10 +97,34 @@ class loader():
     #main()
 
 
+    def set_one_file(self, filename):
+        self.onefile = filename
+
+    def get_one_event(self):
+        if self.onefile == None:
+            matching_files = self.format_filenames()
+            self.onefile = np.random.choice(matching_files)
+
+        df_fit_onefile = self.load_all_fitVals([self.onefile])
+        df_fit_oneevt  = df_fit_onefile.sample()
+
+        
+        return self.onefile, df_fit_oneevt.iloc[0]
 
 
+    def corresponding_rootfile(self):
+        rootfile_path = '/fs/ddn/sdf/group/nexo/users/miaoyu/Reconstruction/Data/Sim/'
+        try:
+            pattern = re.compile(r'seed(\d+)')
+            match = pattern.search(self.onefile)
+            if match:
+                seed_number = match.group(1)
+                self.rootfile = rootfile_path + "Baseline2019_bb0n_center_seed"+seed_number+"_newmap_comsol.nEXOevents.root"
+        except Exception as err:
+            print(type(err))
 
-
+        return self.rootfile
+                
 
 
 

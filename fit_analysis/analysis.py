@@ -5,7 +5,7 @@ import yaml
 from tabulate import tabulate
 
 from loadFits import loader
-import draw
+from draw import drawer
 
 import argparse
 
@@ -42,7 +42,7 @@ fitVals_list = [ [] for _ in range(total_variables)]
 ############################################
 
 # Load fitting configurations we want to compare
-df_config = pd.read_csv('config.csv', dtype=str)
+df_config = pd.read_csv('config.csv', ) #dtype=str)
 df_config.drop(columns='fitid', inplace=True)
 total_configs = df_config.shape[0]
 
@@ -89,13 +89,14 @@ print(tabulate( [ [cfg, np.mean(v), np.std(v)] for cfg, v in zip(legends, relQ) 
 print('===================================================')
 
 
+d = drawer()
 with plt.style.context("styles/my.mplstyle"):
     for val, lb in zip(fitVals_list, labels):
-        fig, _ = draw.draw_fitVals_1Dim(val, legends, lb)
+        fig, _ = d.draw_fitVals_1Dim(val, legends, lb)
 
     for j1 in range(total_variables):
         for j2 in range(j1+1, total_variables):
-            fig, _ = draw.draw_fitVals_2Dim(fitVals_list[j1], fitVals_list[j2], legends, labels[j1], labels[j2])
+            fig, _ = d.draw_fitVals_2Dim(fitVals_list[j1], fitVals_list[j2], legends, labels[j1], labels[j2])
     
 
 

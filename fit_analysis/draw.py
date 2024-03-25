@@ -15,6 +15,11 @@ class drawer():
         self.fitter = pcd_fitter()
         self.gen    = generator(z0=-622.0, xy_step=0.5, z_step=0.5, charge_cubic_L=20., charge_cubic_H=20.)
 
+        self.fit_t  = 0.0
+        self.fit_x  = 0.0
+        self.fit_y  = 0.0
+        self.fit_Q  = 0.0
+        self.true_Q = 0.0
 
     def draw_fitVals_1Dim(self, fitVals, labels, xlabel):
         fig, ax = plt.subplots(figsize=(7, 5))
@@ -56,11 +61,12 @@ class drawer():
         self.fitter.load_one_event()
 
 
-    def config_fitVals(self, tf, xf, yf, Qf):
+    def config_fitVals(self, tf, xf, yf, Qf, Qt):
         self.fit_t = tf
         self.fit_x = xf
         self.fit_y = yf
         self.fit_Q = Qf
+        self.true_Q = Qt
     
     
     def draw_channel_waveforms(self):
@@ -82,11 +88,23 @@ class drawer():
             Q_fit.append(strip_Q)
         Q_fit = np.array(Q_fit)
 
-        print('========================================')
+        itg_Qrec, Qtrue, itg_Qrec_oneChannel = self.baseline_reconstruction()
+
+        print('============================================')
         print(f'The point charge now is located at ({self.fit_x:.3f}, {self.fit_y:.3f}) mm.')
-        print(tabulate([[self.fitter.strip_x_array[i], self.fitter.strip_y_array[i], self.fitter.strip_x_array[i] - self.fit_x, self.fitter.strip_y_array[i] - self.fit_y, self.fitter.strip_type_array[i], self.fitter.strip_charge_array[i], Q_fit[i]] for i in range(self.fitter.fit_nchannels)], headers=['x', 'y', 'dx', 'dy', 'IsXstrip', 'true Q', 'fit Q']))
-        print(f'====> Total collected charges from fitter is {np.sum(Q_fit):.3f}.')
-        print('========================================')
+        print(tabulate([[self.true_Q, itg_Qrec, self.fit_Q]], headers=['true',  'simple integral', 'combined fitter']))
+        print('============================================')
+        print(tabulate([[self.fitter.strip_x_array[i], self.fitter.strip_y_array[i], self.fitter.strip_x_array[i] - self.fit_x, self.fitter.strip_y_array[i] - self.fit_y, self.fitter.strip_type_array[i], self.fitter.strip_charge_array[i], Q_fit[i], itg_Qrec_oneChannel[i]] for i in range(self.fitter.fit_nchannels)], headers=['x', 'y', 'dx', 'dy', 'IsXstrip', 'true Q', 'fit Q', 'integral Q']))
+        print('============================================')
+
+
+
+    def baseline_reconstruction(self):
+        builder = self.fitter.builder
+        event_Qrec, event_Qtrue, = builder.simple_reconstruction()
+        channel_rec_q = builder.channel_rec_q_all
+        return event_Qrec, event_Qtrue, channel_rec_q
+        
 
 
 

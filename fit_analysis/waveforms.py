@@ -20,11 +20,13 @@ for i in range(n):
     
     rootfile = ld.corresponding_rootfile()
 
-    d.config_fitter(rootfile, int(df_fit_oneevt['evtid']),ld.inductive, ld.noise, ld.fine_no, ld.sscut, ld.threshold)
-    d.config_fitVals(df_fit_oneevt['fitt'], df_fit_oneevt['fitx'], df_fit_oneevt['fity'], df_fit_oneevt['fitQ'])
+    d.config_fitter(rootfile, int(df_fit_oneevt['evtid']),ld.inductive, ld.noise, ld.fine_no, ld.sscut, 0.)
+    #d.config_fitter(rootfile, int(df_fit_oneevt['evtid']),ld.inductive, ld.noise, ld.fine_no, ld.sscut, ld.threshold)
+    d.config_fitVals(df_fit_oneevt['fitt'], df_fit_oneevt['fitx'], df_fit_oneevt['fity'], df_fit_oneevt['fitQ'], df_fit_oneevt['trueQ'])
+
     d.fitting_strip_charge()
 
-    d.draw_channel_waveforms()
+    #d.draw_channel_waveforms()
 
 
 

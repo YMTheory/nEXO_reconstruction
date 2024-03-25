@@ -49,6 +49,8 @@ class event_builder():
         self.charge_all = None
         self.ystrip_flag_all = None
         self.charge_rec_all = None
+        self.channel_rec_q_all = None
+        self.channel_rec_q_coll = None
         
         self.fit_t1     = 0
         self.fit_t2     = -1
@@ -89,6 +91,7 @@ class event_builder():
     def channel_selection(self):
         # Some induction channel has very small amplitude which should not be fitted at all..
         # The thre is calculated as ... (require re-calculation later).
+        #q_tot, q_sig, q_noise = 0, 0, 0,
         thre = self.amp_thre
         Ncha = len(self.mc_event['wf'])
         self.selected_coll_id, self.selected_other_id, self.selected_all_id = [], [], []
@@ -97,17 +100,24 @@ class event_builder():
             noisetag = self.mc_event['noise_tag'][i]
             charge = self.mc_event['q'][i]
             if np.any(np.abs(wf) > thre):
+                #q_tot += self.mc_event['q'][i]
                 if not noisetag: # Use truth here
                     if charge > 0:
                         self.selected_coll_id.append(i)
                     else:
                         self.selected_other_id.append(i)
+                    #q_sig += self.mc_event['q'][i]
+                #else:
+                #    q_noise += self.mc_event['q'][i]
 
         for num in self.selected_coll_id:
             self.selected_all_id.append(num)
         for num in self.selected_other_id:
             self.selected_all_id.append(num)
               
+        #print(f'Total channel in this event is {Ncha}, and {len(self.selected_all_id)} are selected as non-noise channels.')
+        #print(f"Total noise charge is {q_noise:.2f}, and signal charge is {q_sig:.2f} => Total charge inclusively is {q_tot:.2f}.")
+        #print(f'Sum of mc_event charge is {np.sum(self.mc_event["q"])}.')
               
               
     def find_intersections(self, x_strip, y_strip, charge, ystrip_flag):
@@ -351,12 +361,12 @@ class event_builder():
         return cluster_x-self.dx, cluster_y-self.dy, cluster_E
 
 
-    def charge_reconstrucion(self, unscaled_wf, electron):
-        Z_anode = 403 # mm
-        lifetime = 1e4 # us
-        velocity = 1.7 # mm/us
-        z = -1022.6
-        correction = np.exp((np.abs(z)-Z_anode)/velocity/lifetime)
+    def charge_reconstruction(self, unscaled_wf, electron):
+        #Z_anode = 403 # mm
+        #lifetime = 1e4 # us
+        #velocity = 1.7 # mm/us
+        #z = -1022.6
+        #correction = np.exp((np.abs(z)-Z_anode)/velocity/lifetime)
         # In nexo offline, there is a scale facotr 9 on the waveform amplitudes.
         scale = 9.
         #truth = scale * np.asarray(unscaled_truth)
@@ -368,24 +378,35 @@ class event_builder():
         return np.sum(wf) / gain
         
         
-    def simple_reconstruction(self):
+    def simple_reconstruction(self, inductive=True):
         event_q = 0.
         channel_rec_q = []
-        Ncha = len(self.mc_event['q'])
-        for i in range(Ncha):
-            channel_q = self.charge_reconstrucion(self.mc_event['true_wf'][i], self.mc_event['nte'][i]) 
-            channel_rec_q.append(channel_q)
-            event_q += channel_q
-            
+
+        if inductive:
+            self.event_q_true = np.sum(self.charge_all)
+            for ich in range(len(self.selected_all_id)):
+                channel_q = self.charge_reconstruction(self.wf_all[ich], -1) # the electron variable is not used for recon.
+                channel_rec_q.append(channel_q)
+                event_q += channel_q
+            self.channel_rec_q_all = channel_rec_q
+
+        else:
+            self.event_q_true = np.sum(self.charge_coll)
+            for ich in range(len(self.selected_coll_id)):
+                channel_q = self.charge_reconstruction(self.wf_coll[ich], -1) # the electron variable is not used for recon.
+                channel_rec_q.append(channel_q)
+                event_q += channel_q
+            self.channel_rec_q_coll = channel_rec_q
+
+
         self.event_q_rec = event_q
-        self.event_q_true = np.sum(self.mc_event['q'])
+        #self.event_q_true = np.sum(self.mc_event['q'])
 
-        channel_rec_q = np.array(channel_rec_q)
-        self.mc_event['q_rec'] = channel_rec_q
-        
-        x_cross, y_cross, cross_xstrip_charge, cross_ystrip_charge = self.find_intersections(self.strip_x_all, self.strip_y_all, self.charge_all, self.ystrip_flag_all)
 
-        return self.event_q_rec, self.event_q_true, x_cross, y_cross, cross_xstrip_charge, cross_ystrip_charge
+        #x_cross, y_cross, cross_xstrip_charge, cross_ystrip_charge = self.find_intersections(self.strip_x_all, self.strip_y_all, self.charge_all, self.ystrip_flag_all)
+
+        #return self.event_q_rec, self.event_q_true, x_cross, y_cross, cross_xstrip_charge, cross_ystrip_charge
+        return self.event_q_rec, self.event_q_true
         
 
     def _plot_channels2D(self, fitx=[], fity=[], fitq=[], truthDep=False, truthNEST=False):

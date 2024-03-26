@@ -20,6 +20,8 @@ Analysis scripts for fitting results.
 
 An example running command could be `python analysis.py --variables fitx fity relQ`
 
+One can also use `--charge` to ask detailed charge info being printed and plotted (variables is not a compulsory argument) like `python analysis.py --charge`.
+
 
 - waveform.py: plot fitting waveforms for single event and calculate the collected charges on each strip of this event. Currently the single fitting event is randomly selected from the fitting results csv file.
 

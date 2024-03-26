@@ -34,7 +34,39 @@ class drawer():
         plt.show()
         return fig, ax
     
+
+    def draw_raw_charge_distribution(self, fits, itgs, truths, relQs, itgrelQs, labels):
+        fig, ax = plt.subplots(2, 2, figsize=(13, 9))
+
+        fits_min, fits_max = np.min([np.min(arr) for arr in fits]), np.max([np.max(arr) for arr in fits])
+        itgs_min, itgs_max = np.min([np.min(arr) for arr in itgs]), np.max([np.max(arr) for arr in itgs])
+        truths_min, truths_max = np.min([np.min(arr) for arr in truths]), np.max([np.max(arr) for arr in truths])
+        max_bin = np.max([fits_max, truths_max, itgs_max])
+        min_bin = np.min([fits_min, truths_min, itgs_min])
+
+        min_fitrel_bin, max_fitrel_bin = np.min([np.min(arr) for arr in relQs]), np.max([np.max(arr) for arr in relQs])
+        min_itgrel_bin, max_itgrel_bin = np.min([np.min(arr) for arr in itgrelQs]), np.max([np.max(arr) for arr in itgrelQs])
+        
     
+        for fit, itg, tru, rel, itgrel, lb in zip(fits, itgs, truths, relQs, itgrelQs, labels):
+            ax[0, 0].hist(fit,      bins=50, range=(min_bin, max_bin),               linestyle='-', histtype='step', label='fit, '+lb       )
+            ax[0, 0].hist(tru,      bins=50, range=(min_bin, max_bin),               linestyle=':', histtype='step', label='truth, '+lb     )
+            ax[0, 1].hist(itg,      bins=50, range=(min_bin, max_bin),               linestyle='-', histtype='step', label='integral, '+lb  )
+            ax[0, 1].hist(tru,      bins=50, range=(min_bin, max_bin),               linestyle=':', histtype='step', label='truth, '+lb     )
+            ax[1, 0].hist(rel,      bins=50, range=(min_fitrel_bin, max_fitrel_bin), linestyle='-', histtype='step', label='fit, '+lb       )
+            ax[1, 1].hist(itgrel,   bins=50, range=(min_itgrel_bin, max_itgrel_bin), linestyle='-', histtype='step', label='integral, '+lb  )
+    
+        for i in range(2):
+            ax[0, i].set_xlabel('charge')
+            ax[0, i].legend()
+            ax[1, i].set_xlabel('(rec - true) / true [%]')
+            ax[1, i].legend()
+
+        plt.tight_layout()
+        plt.show()
+
+
+
     
     def draw_fitVals_2Dim(self, fitVals1, fitVals2, labels, xlabel, ylabel):
         fig, ax = plt.subplots( figsize=(7, 5) )

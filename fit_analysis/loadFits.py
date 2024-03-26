@@ -7,7 +7,7 @@ import os
 import re
 
 class loader():
-    def __init__(self, inductive=True, noise=True, fine='fine', sscut=1.0, threshold=40, year=2024, month=3, day=22, label='default'):
+    def __init__(self, inductive=True, noise=True, fine='fine', sscut=1.0, threshold=40, rdminit=True, year=2024, month=3, day=22, label='default'):
         self.inductive  = inductive
         self.noise      = noise
         self.fine       = fine
@@ -17,6 +17,7 @@ class loader():
             self.fine_no = 0
         self.sscut      = sscut
         self.threshold  = threshold
+        self.rdminit    = rdminit
         self.year       = year
         self.month      = month
         self.day        = day
@@ -32,16 +33,13 @@ class loader():
     ###### format the input filename:
     def format_filenames(self):
         path = '/fs/ddn/sdf/group/nexo/users/miaoyu/Reconstruction/Data/Fits/results'
-        prefix = 'fit_MCtruthSS_seed'
-        if self.month < 10:
-            zero = '0'
-        else:
-            zero = ''
-        suffix = '_inductive'+str(self.inductive)+'_noise'+str(self.noise)+'_'+self.fine+'newPDFs_'+str(zero)+str(self.month)+str(self.day)+'_refitmax5_SScut'+f'{self.sscut:.1f}'+'mm_ampthre'+f'{self.threshold}'+'.csv'
+        self.prefix = 'fit_MCtruthSS_seed'
+        #suffix = '_inductive'+str(self.inductive)+'_noise'+str(self.noise)+'_'+self.fine+'newPDFs_'+str(zero)+str(self.month)+str(self.day)+'_refitmax5_SScut'+f'{self.sscut:.1f}'+'mm_ampthre'+f'{self.threshold}'+'.csv'
+        self.suffix = '_inductive'+str(self.inductive)+'_noise'+str(self.noise)+'_'+self.fine+'newPDFs_'+'refitmax5_SScut'+f'{self.sscut:.1f}'+'mm_ampthre'+f'{self.threshold}_rdminit'+str(self.rdminit) + '_'+str(self.year) + str(self.month) + str(self.day) + '.csv'
         
         
         # Match all files, do not specify the seed manually
-        pattern = os.path.join(path, "*"+suffix)
+        pattern = os.path.join(path, "*"+self.suffix)
         matching_files = glob.glob(pattern)
 
         return matching_files
@@ -66,12 +64,13 @@ class loader():
             return vararray
         except ValueError:
             print('ValueError: there is no matching files for this fitting configuration.')
+            print('--> ' + str(self.suffix))
 
 
 
 
     def load_all_fitVals(self, matching_files):
-        varnamelist = ['evtid', 'status', 'chi2', 'fitt', 'fitterr', 'fitx', 'fitxerr', 'fity', 'fityerr', 'fitQ' , 'fitQerr', 'trueQ',]
+        varnamelist = ['evtid', 'status', 'chi2', 'fitt', 'fitterr', 'fitx', 'fitxerr', 'fity', 'fityerr', 'fitQ' , 'fitQerr', 'trueQ', 'itgQ']
         varlist = []
     
         for varname in varnamelist:
@@ -95,6 +94,14 @@ class loader():
         return df_fit
     
     #main()
+
+
+    def successful_fitNumber(self):
+        df_fit = self.load()
+        successful_num = len(df_fit[df_fit['status'] == 1] )
+        tot_num = df_fit.shape[0]
+        print(f'>>> Configure {self.label}: total fitting event is {tot_num} among which {successful_num} is successful.')
+
 
 
     def set_one_file(self, filename):
